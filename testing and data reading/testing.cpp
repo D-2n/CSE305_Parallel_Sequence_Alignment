@@ -165,7 +165,74 @@ int test_n_cores( std::vector<std::string> &names, std::vector<std::string> &seq
     }
     return 0;
 }
+int test_n_cores_thread(  std::vector<std::string> &names, std::vector<std::string> &sequences){
+    //get the size of the smallest list
+    std::cout << "Testing with different input sizes\n\n";
+    size_t available_threads =  std::thread::hardware_concurrency();
+    int test_pairs = 2000;
+    int core_increments = 2; //change to test/ncores max
+    int sequence_one_index;
+    int sequence_two_index;
 
+    size_t chunk_size = (test_pairs + available_threads - 1) / available_threads; // Correct chunk size calculation
+    size_t n_chunks = available_threads;
+    size_t remainder = test_pairs % chunk_size;
+
+
+    size_t dataset_size = sequences.size();
+    int range = dataset_size - 1;
+
+    
+    std::vector<std::thread> threads;
+    std::vector<double> n_cores_list(test_pairs);
+    std::vector<std::chrono::duration<double>> execution_times(test_pairs);
+
+
+
+    std::ofstream test_res_file;
+    test_res_file.open ("n_cores_testing.csv");
+
+    test_res_file << "Testing with different number of cores\n";
+    test_res_file << "Test number,Number of cores,Execution time\n";
+
+    
+    auto test_n_cores_threaded = [&](const std::vector<std::string> &sequences, size_t start, size_t end, size_t n_cores) {
+        for (size_t i = start; i < end && i < test_pairs; ++i){
+            
+            sequence_one_index = rand() % range;
+            sequence_two_index = rand() % range;
+            std::string seq1 = sequences[sequence_one_index];
+            std::string seq2 = sequences[sequence_two_index];
+
+            auto start = std::chrono::high_resolution_clock::now();
+            //perform call, also do input size = max(minimal length of the two sequences, provided input size)
+            n_cores_list[i] = n_cores;
+            auto end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> elapsed = end - start;
+            
+            execution_times[i] = elapsed;
+        }
+    };
+    size_t n_cores_current;
+    for (size_t t = 0; t < n_chunks; t++){
+        //get two random sequences
+        size_t start = t * chunk_size;
+        size_t end = (t == available_threads - 1) ? (test_pairs) : (start + chunk_size); 
+        n_cores_current = (((t+1) * chunk_size) / core_increments) * core_increments;
+        threads.emplace_back(test_n_cores_threaded, std::ref(sequences), start, end, n_cores_current);
+        
+    }
+    
+    for (auto& t : threads) {
+        t.join();
+    }
+    //write results into .csv
+    for (size_t j = 0; j < test_pairs; j++){
+        test_res_file << j << "," << n_cores_list[j] << "," << execution_times[j].count() << "\n";
+    }
+    test_res_file.close();
+    return 0;
+}
 /**
 test_similarity - Performs a set number of test batches, each of them picking two sequences from the dataset, computing their similarity,
 and then performing alignment.
@@ -247,9 +314,9 @@ int main(){
     //import data
     read_and_store_sequences(names,sequences,filename);
 
-    test_input_size_thread(names,sequences);
+    //test_input_size_thread(names,sequences);
     
-    //test_n_cores(names,sequences);
+    test_n_cores_thread(names,sequences);
     //test_similarity(names, sequences);
 
 }
