@@ -13,7 +13,7 @@
 * @param sequences reference to a list that stores gene sequences.
 * @param filename path to the data file.
 * @return 0 if executed sucessfully, 1 otherwise.
-* Canis Lupus familiaris a.k.a "dog" genes taken from the NCBI database: https://www.ncbi.nlm.nih.gov/datasets/gene/taxon/9615/
+* @note Canis Lupus familiaris a.k.a "dog" genes taken from the NCBI database: https://www.ncbi.nlm.nih.gov/datasets/gene/taxon/9615/
 */
 int read_and_store_sequences(std::vector<std::string>& names, std::vector<std::string>& sequences, std::string& filename){
     
@@ -103,7 +103,7 @@ double sequence_similarity(const std::string &sequence1, const std::string &sequ
     std::atomic<int> score(0);
     std::vector<std::thread> threads;
 
-    size_t num_threads = 1000;
+    size_t num_threads = std::thread::hardware_concurrency();;
     size_t chunk_size = iteration_size / num_threads;
     size_t n_chunks = iteration_size / chunk_size;
     size_t remainder = iteration_size % num_threads;

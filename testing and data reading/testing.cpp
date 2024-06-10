@@ -4,6 +4,7 @@
 #include <chrono>
 #include <thread>
 #include <fstream>
+#include <list>
 /*
 Testing section:
 1) Test on sequences of different sizes.
@@ -51,6 +52,74 @@ int test_input_size( std::vector<std::string> &names, std::vector<std::string> &
             std::cout << "Execution time: " << elapsed.count() << " seconds\n";
         }
     }
+    return 0;
+}
+int test_input_size_thread(  std::vector<std::string> &names, std::vector<std::string> &sequences){
+    //get the size of the smallest list
+    std::cout << "Testing with different input sizes\n\n";
+    size_t available_threads =  std::thread::hardware_concurrency();
+    int test_pairs = 2000;
+    int input_size_inc = 2000;
+    int sequence_one_index;
+    int sequence_two_index;
+
+    size_t chunk_size = (test_pairs + available_threads - 1) / available_threads; // Correct chunk size calculation
+    size_t n_chunks = available_threads;
+    size_t remainder = test_pairs % chunk_size;
+
+
+    size_t dataset_size = sequences.size();
+    int range = dataset_size - 1;
+
+    
+    std::vector<std::thread> threads;
+    std::vector<double> input_sizes(test_pairs);
+    std::vector<std::chrono::duration<double>> execution_times(test_pairs);
+
+
+
+    std::ofstream test_res_file;
+    test_res_file.open ("input_size_testing.csv");
+
+    test_res_file << "Testing with different input sizes\n";
+    test_res_file << "Test number,Input size,Execution time\n";
+
+    
+    auto test_input_threaded = [&](const std::vector<std::string> &sequences, size_t start, size_t end, size_t input_size) {
+        for (size_t i = start; i < end && i < test_pairs; ++i){
+            
+            sequence_one_index = rand() % range;
+            sequence_two_index = rand() % range;
+            std::string seq1 = sequences[sequence_one_index];
+            std::string seq2 = sequences[sequence_two_index];
+
+            auto start = std::chrono::high_resolution_clock::now();
+            //perform call, also do input size = max(minimal length of the two sequences, provided input size)
+            input_sizes[i] = input_size;
+            auto end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> elapsed = end - start;
+            
+            execution_times[i] = elapsed;
+        }
+    };
+    size_t input_size;
+    for (size_t t = 0; t < n_chunks; t++){
+        //get two random sequences
+        size_t start = t * chunk_size;
+        size_t end = (t == available_threads - 1) ? (test_pairs) : (start + chunk_size); 
+        input_size = (((t+1) * chunk_size) / 150) * input_size_inc;
+        threads.emplace_back(test_input_threaded, std::ref(sequences), start, end, input_size);
+        
+    }
+    
+    for (auto& t : threads) {
+        t.join();
+    }
+    //write results into .csv
+    for (size_t j = 0; j < test_pairs; j++){
+        test_res_file << j << "," << input_sizes[j] << "," << execution_times[j].count() << "\n";
+    }
+    test_res_file.close();
     return 0;
 }
 
@@ -106,9 +175,16 @@ and then performing alignment.
 */
 int test_similarity( std::vector<std::string> &names, std::vector<std::string> &sequences){
     std::cout << "Testing with similarity computation\n\n";
-    int test_pairs = 20;
+    size_t available_threads =  std::thread::hardware_concurrency();
+    int test_pairs = 2000;
     int sequence_one_index;
     int sequence_two_index;
+
+    size_t chunk_size = (test_pairs + available_threads - 1) / available_threads; // Correct chunk size calculation
+    size_t n_chunks = available_threads;
+    size_t remainder = test_pairs % chunk_size;
+
+
     size_t dataset_size = sequences.size();
     int range = dataset_size - 1;
 
@@ -126,26 +202,28 @@ int test_similarity( std::vector<std::string> &names, std::vector<std::string> &
     similarity_file << "Test number,Similarity,Execution time\n";
 
     
-    auto sequence_similarity_threaded = [&](const std::string &seq1, const std::string &seq2, size_t id) {
-        auto start = std::chrono::high_resolution_clock::now();
-        
-        std::cout << similarity_results[id] << "\n";
-        similarity_results[id] = sequence_similarity(seq1, seq2);
-        auto end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> elapsed = end - start;
-        execution_times[id] = elapsed;
-    };
-
-    for (int t = 0; t < test_pairs; t++){
-        std::cout << "Testing pair " << t+1 << "\n\n";
-        //get two random sequences
-        sequence_one_index = rand() % range;
-        sequence_two_index = rand() % range;
-
-        while (sequence_two_index == sequence_one_index){ //avoid duplicates here
+    auto sequence_similarity_threaded = [&](const std::vector<std::string> &sequences, size_t start, size_t end) {
+        for (size_t i = start; i < end && i < test_pairs; ++i){
+            
+            sequence_one_index = rand() % range;
             sequence_two_index = rand() % range;
+            std::string seq1 = sequences[sequence_one_index];
+            std::string seq2 = sequences[sequence_two_index];
+
+            auto start = std::chrono::high_resolution_clock::now();
+            
+            similarity_results[i] = sequence_similarity(std::ref(seq1), std::ref(seq2));
+            auto end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> elapsed = end - start;
+            
+            execution_times[i] = elapsed;
         }
-        threads.emplace_back(sequence_similarity_threaded, std::ref(sequences[sequence_one_index]), std::ref(sequences[sequence_two_index]), t);
+    };
+    for (size_t t = 0; t < n_chunks; t++){
+        //get two random sequences
+        size_t start = t * chunk_size;
+        size_t end = (t == available_threads - 1) ? (test_pairs) : (start + chunk_size); 
+        threads.emplace_back(sequence_similarity_threaded, std::ref(sequences), start, end);
         
     }
     
@@ -154,7 +232,6 @@ int test_similarity( std::vector<std::string> &names, std::vector<std::string> &
     }
     //write results into .csv
     for (size_t j = 0; j < test_pairs; j++){
-        std::cout << similarity_results[j] << "\n";
         similarity_file << j << "," << similarity_results[j] << "," << execution_times[j].count() << "\n";
     }
     similarity_file.close();
@@ -170,9 +247,9 @@ int main(){
     //import data
     read_and_store_sequences(names,sequences,filename);
 
-    //test_input_size(names,sequences);
+    test_input_size_thread(names,sequences);
     
     //test_n_cores(names,sequences);
-    test_similarity(names, sequences);
+    //test_similarity(names, sequences);
 
 }
