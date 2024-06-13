@@ -101,25 +101,39 @@ void ParallelPrefixMax(size_t p, std::vector<long int> &values, std::vector<long
 }
 
 int main() {
-    std::vector<long int> values = {-1, 3, 5, 1, 2, 7};
+    /*std::vector<long int> values = {-1, 3, 5, 1, 2, 7};
     std::vector<long int> partial_sums(6);
     ParallelPrefixMax(7, values, partial_sums);
     for(auto &p: partial_sums) {
         printf("%ld ", p);
     }
-    printf("\n");
+    printf("\n"); */
+    char* A = "AGG";
+    char* B = "ATGT";
+    size_t m = 4;
+    size_t n = 5;
+    size_t ida = 0;
+    size_t idb = 0;
+    size_t p = 2;
+    int start_type = -1;
+    int end_type = -1;
+    int g = 1;
+    int h = 1;
+    Subproblem subp = Subproblem(A, B, m, n, ida, idb, p, start_type, end_type, g, h);
+    subp.compute_tables();
+
     return 0;
 }
 
 void Subproblem::ComputeFirstRowMapThread(Subproblem *subp, size_t start, size_t end) {
     while (start < end) {
-        subp->T1[0][start] = std::numeric_limits<long int>::min();
-        subp->T3[0][start] = std::numeric_limits<long int>::min();
+        subp->T1[0][start] = -std::numeric_limits<long int>::infinity();
+        subp->T3[0][start] = -std::numeric_limits<long int>::infinity();
         if (subp->start_type == -2) {
             subp->T2[0][start] = -subp->g * start;
         }
         else if (subp->start_type == 1 || subp->start_type == 3) {
-            subp->T2[0][start] = std::numeric_limits<long int>::min();
+            subp->T2[0][start] = -std::numeric_limits<long int>::infinity();
         }
         else {
             subp->T2[0][start] = -subp->h - subp->g * start;
@@ -132,8 +146,8 @@ void Subproblem::ComputeRowMapThread13(Subproblem *subp, size_t i, size_t start,
     while (start < end) {
         subp->T1[i][start] = subp->f(i, start) + std::max(std::max(subp->T1[i-1][start-1], subp->T2[i-1][start-1]), subp->T3[i-1][start-1]);
         subp->T3[i][start] = std::max(std::max(subp->T1[i-1][start] - subp->g - subp->h, subp->T2[i-1][start] - subp->g - subp->h), subp->T3[i-1][start] - subp->g);
+        start++;
     }
-    start++;
 }
 
 void Subproblem::ComputeOmegaMapThread(Subproblem *subp, size_t i, size_t start, size_t end, std::vector<long int> &omega) {
@@ -160,9 +174,9 @@ void Subproblem::compute_row(size_t i) {
     std::vector<std::thread> workers(num_threads-1);
     if (i == 0) {
         // top row
-        T1[0][0] = std::numeric_limits<long int>::min();
-        T2[0][0] = std::numeric_limits<long int>::min();
-        T3[0][0] = std::numeric_limits<long int>::min();
+        T1[0][0] = -std::numeric_limits<long int>::infinity();
+        T2[0][0] = -std::numeric_limits<long int>::infinity();
+        T3[0][0] = -std::numeric_limits<long int>::infinity();
         if (start_type == 1 || start_type == -1) {
             T1[0][0] = 0;
         }
@@ -181,13 +195,13 @@ void Subproblem::compute_row(size_t i) {
         }
     }
     else {
-        T1[i][0] = std::numeric_limits<long int>::min();
-        T2[i][0] = std::numeric_limits<long int>::min();
+        T1[i][0] = -std::numeric_limits<long int>::infinity();
+        T2[i][0] = -std::numeric_limits<long int>::infinity();
         if (start_type == -3) {
             T3[i][0] = -g * i;
         }
         else if (start_type == 1 || start_type == 2) {
-            T3[i][0] = std::numeric_limits<long int>::min();
+            T3[i][0] = -std::numeric_limits<long int>::infinity();
         }
         else {
             T3[i][0] = -h - g * i;
@@ -225,5 +239,32 @@ void Subproblem::compute_row(size_t i) {
         for (int j = 0; j < num_threads - 1; j++) {
             workers[j].join();
         }
+    }
+}
+
+void Subproblem::compute_tables() {
+    for (size_t i = 0; i < m; i++) {
+        compute_row(i);
+    }
+    printf("T1:\n");
+    for (size_t i = 0; i< m; i++) {
+        for (size_t j = 0; j< n; j++) {
+            printf("%ld ", T1[i][j]);
+        }
+        printf("\n");
+    }
+    printf("T2:\n");
+    for (size_t i = 0; i< m; i++) {
+        for (size_t j = 0; j< n; j++) {
+            printf("%ld ", T2[i][j]);
+        }
+        printf("\n");
+    }
+    printf("T3:\n");
+    for (size_t i = 0; i< m; i++) {
+        for (size_t j = 0; j< n; j++) {
+            printf("%ld ", T3[i][j]);
+        }
+        printf("\n");
     }
 }
