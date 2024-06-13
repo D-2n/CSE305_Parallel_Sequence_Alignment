@@ -149,6 +149,16 @@ void compute_omega_parallel(std::vector<align> &partial_bp, size_t n, size_t m, 
     }
 }
 
+size_t assign_processors(size_t sum_prev, size_t curr_subproblem) {
+    if (sum_prev % 3 == 0) {
+        return (curr_subproblem + 2) / 3;
+    }
+    else if (sum_prev % 3 == 1) {
+        return 1 + curr_subproblem / 3;
+    }
+    return 1 + (curr_subproblem + 1) / 3;
+}
+
 void optimal_alignment(std::vector<align> partial_bp, size_t n, size_t m, size_t p) {
     size_t num_subproblems = partial_bp.size() - 1;
     std::vector<size_t> omega(num_subproblems);
@@ -169,45 +179,57 @@ void optimal_alignment(std::vector<align> partial_bp, size_t n, size_t m, size_t
         printf("%d ", partial_sums[j]);
     }
     printf("\n");
+
+    printf("%d ", assign_processors(0, omega[0]));
+    for(size_t j=1; j<partial_sums.size();j++){
+        printf("%d ", assign_processors(partial_sums[j-1], omega[j]));
+    }
+    printf("\n");
     
     
-    /* solving subproblems
-    // solve subproblems 0, 3, ...
-    // solve subproblems 1, 4, ...
-    // solve subproblems 2, 5, ...
-    size_t num_subproblems = omega.size();
-    std::vector<size_t> num_proc_per_sub(0); // to be computed after parallel-prefix
+    /* solving subproblems*/
     std::vector<std::thread> workers(num_subproblems - 1);
     std::vector<align*> pointers (num_subproblems * 2); // beginning-end
 
-    for (size_t i=0; i<num_subproblems - 1; i+=3) {
+    size_t i = 0;
+    // solve subproblems 0, 3, ...
+    while (i < num_subproblems - 3) {
         workers[i] = std::thread(&OptimalAlignmentMapThread, ...)
+        i += 3;
     }
     OptimalAlignmentMapThread(...);
-    for(size_t i=0; i<num_subproblems - 1; i++) {
+    for(size_t i=0; i<num_subproblems - 3; i += 3) {
         workers[i].join();
     }
-    for (size_t i=1; i<num_subproblems - 1; i+=3) {
+
+    // solve subproblems 1, 4, ...
+    i = 1;
+    while (i < num_subproblems - 3) {
         workers[i] = std::thread(&OptimalAlignmentMapThread, ...)
-    }    
-    OptimalAlignmentMapThread(...);
-    for(size_t i=0; i<num_subproblems - 1; i++) {
-        workers[i].join();
-    }
-    for (size_t i=2; i<num_subproblems - 1; i+=3) {
-        workers[i] = std::thread(&OptimalAlignmentMapThread, ...)
+        i += 3;
     }
     OptimalAlignmentMapThread(...);
-    for(size_t i=0; i<num_subproblems - 1; i++) {
+    for(size_t i=1; i<num_subproblems - 3; i += 3) {
         workers[i].join();
     }
+
+    // solve subproblems 2, 5, ...
+    i = 2;
+    while (i < num_subproblems - 3) {
+        workers[i] = std::thread(&OptimalAlignmentMapThread, ...)
+        i += 3;
+    }
+    OptimalAlignmentMapThread(...);
+    for(size_t i=2; i<num_subproblems - 3; i += 3) {
+        workers[i].join();
+    }
+
     // concatenate the results
     for(size_t i = 1; i<num_subproblems-1; i++) {
         align* prev = pointers[2*(i-1)+1];
         align* next = pointers[2*i];
         prev -> next = next;
     }
-    */
 }
 
 int main(){
