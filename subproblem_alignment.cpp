@@ -2,13 +2,13 @@
 #include <deque>
 
 typedef struct parallel_prefix_max_queue_element {
-    long int value;
+    double value;
     size_t begin_id;
     size_t end_id;
     struct parallel_prefix_max_queue_element* next;
 } queue_indices_max;
 
-void PrefixMaxMapThread(std::vector<long int> &sums, long int value, queue_indices_max *curr) {
+void PrefixMaxMapThread(std::vector<double> &sums, double value, queue_indices_max *curr) {
     if (curr != NULL) {
         for (size_t i = curr->begin_id; i < curr->end_id; i++) {
             sums[i] = std::max(sums[i], value);
@@ -16,7 +16,7 @@ void PrefixMaxMapThread(std::vector<long int> &sums, long int value, queue_indic
     }
 }
 
-void PrefixMaxInitMapThread(std::vector<long int> &values, std::vector<long int> &sums, queue_indices_max &q) {
+void PrefixMaxInitMapThread(std::vector<double> &values, std::vector<double> &sums, queue_indices_max &q) {
     sums[q.begin_id] = values[q.begin_id];
     for (size_t i = q.begin_id + 1; i < q.end_id; i++) {
         sums[i] = std::max(sums[i-1], values[i]);
@@ -24,7 +24,7 @@ void PrefixMaxInitMapThread(std::vector<long int> &values, std::vector<long int>
     q.value = sums[q.end_id - 1];
 }
 
-void ParallelPrefixMax(size_t p, std::vector<long int> &values, std::vector<long int> &partial_sums) {
+void ParallelPrefixMax(size_t p, std::vector<double> &values, std::vector<double> &partial_sums) {
 
     std::vector<queue_indices_max> units;
     std::deque<queue_indices_max*> processes;
@@ -101,39 +101,43 @@ void ParallelPrefixMax(size_t p, std::vector<long int> &values, std::vector<long
 }
 
 int main() {
-    /*std::vector<long int> values = {-1, 3, 5, 1, 2, 7};
-    std::vector<long int> partial_sums(6);
+    /*std::vector<double> values = {-1, 3, 5, 1, 2, 7};
+    std::vector<double> partial_sums(6);
     ParallelPrefixMax(7, values, partial_sums);
     for(auto &p: partial_sums) {
-        printf("%ld ", p);
+        printf("%lf ", p);
     }
     printf("\n"); */
-    char* A = "AGG";
-    char* B = "ATGT";
+    char* A = "AGGA";
+    char* B = "ATGTC";
     size_t m = 4;
     size_t n = 5;
     size_t ida = 0;
     size_t idb = 0;
-    size_t p = 2;
+    size_t p = 1;
     int start_type = -1;
     int end_type = -1;
-    int g = 1;
-    int h = 1;
+    double g = 2;
+    double h = 1;
     Subproblem subp = Subproblem(A, B, m, n, ida, idb, p, start_type, end_type, g, h);
+    printf("parallel:\n");
     subp.compute_tables();
+
+    printf("non-parallel:\n");
+    subp.non_parallel_tables();
 
     return 0;
 }
 
 void Subproblem::ComputeFirstRowMapThread(Subproblem *subp, size_t start, size_t end) {
     while (start < end) {
-        subp->T1[0][start] = -std::numeric_limits<long int>::infinity();
-        subp->T3[0][start] = -std::numeric_limits<long int>::infinity();
+        subp->T1[0][start] = -std::numeric_limits<double>::infinity();
+        subp->T3[0][start] = -std::numeric_limits<double>::infinity();
         if (subp->start_type == -2) {
             subp->T2[0][start] = -subp->g * start;
         }
         else if (subp->start_type == 1 || subp->start_type == 3) {
-            subp->T2[0][start] = -std::numeric_limits<long int>::infinity();
+            subp->T2[0][start] = -std::numeric_limits<double>::infinity();
         }
         else {
             subp->T2[0][start] = -subp->h - subp->g * start;
@@ -150,14 +154,14 @@ void Subproblem::ComputeRowMapThread13(Subproblem *subp, size_t i, size_t start,
     }
 }
 
-void Subproblem::ComputeOmegaMapThread(Subproblem *subp, size_t i, size_t start, size_t end, std::vector<long int> &omega) {
+void Subproblem::ComputeOmegaMapThread(Subproblem *subp, size_t i, size_t start, size_t end, std::vector<double> &omega) {
     while (start < end) {
         omega[start] = start * subp->g + std::max(subp->T1[i][start-1] - subp->g - subp->h, subp->T3[i][start-1] - subp->g - subp->h);
         start++;
     }
 }
 
-void Subproblem::ComputeRowMapThread2(Subproblem *subp, size_t i, size_t start, size_t end, std::vector<long int> &partial) {
+void Subproblem::ComputeRowMapThread2(Subproblem *subp, size_t i, size_t start, size_t end, std::vector<double> &partial) {
     while (start < end) {
         subp->T2[i][start] = partial[start] - start * subp->g;
         start++;
@@ -174,9 +178,9 @@ void Subproblem::compute_row(size_t i) {
     std::vector<std::thread> workers(num_threads-1);
     if (i == 0) {
         // top row
-        T1[0][0] = -std::numeric_limits<long int>::infinity();
-        T2[0][0] = -std::numeric_limits<long int>::infinity();
-        T3[0][0] = -std::numeric_limits<long int>::infinity();
+        T1[0][0] = -std::numeric_limits<double>::infinity();
+        T2[0][0] = -std::numeric_limits<double>::infinity();
+        T3[0][0] = -std::numeric_limits<double>::infinity();
         if (start_type == 1 || start_type == -1) {
             T1[0][0] = 0;
         }
@@ -195,13 +199,13 @@ void Subproblem::compute_row(size_t i) {
         }
     }
     else {
-        T1[i][0] = -std::numeric_limits<long int>::infinity();
-        T2[i][0] = -std::numeric_limits<long int>::infinity();
+        T1[i][0] = -std::numeric_limits<double>::infinity();
+        T2[i][0] = -std::numeric_limits<double>::infinity();
         if (start_type == -3) {
             T3[i][0] = -g * i;
         }
         else if (start_type == 1 || start_type == 2) {
-            T3[i][0] = -std::numeric_limits<long int>::infinity();
+            T3[i][0] = -std::numeric_limits<double>::infinity();
         }
         else {
             T3[i][0] = -h - g * i;
@@ -217,7 +221,7 @@ void Subproblem::compute_row(size_t i) {
         // compute T2 using parallel prefix
 
         // compute omega +jg values
-        std::vector<long int> omega(n+1);
+        std::vector<double> omega(n+1);
         omega[0] = T2[i][0];
         for (int j = 0; j < num_threads - 1; j++) {
             workers[j] = std::thread(&ComputeOmegaMapThread, this, i, 1 + j*block_size, 1 + (j + 1) * block_size, std::ref(omega));
@@ -228,7 +232,7 @@ void Subproblem::compute_row(size_t i) {
         }
 
         // parallel prefix
-        std::vector<long int> partials(n+1);
+        std::vector<double> partials(n+1);
         ParallelPrefixMax(this->p, omega, partials);
 
         // deduce T2
@@ -243,27 +247,95 @@ void Subproblem::compute_row(size_t i) {
 }
 
 void Subproblem::compute_tables() {
-    for (size_t i = 0; i < m; i++) {
+    for (size_t i = 0; i <= m; i++) {
         compute_row(i);
     }
     printf("T1:\n");
-    for (size_t i = 0; i< m; i++) {
-        for (size_t j = 0; j< n; j++) {
-            printf("%ld ", T1[i][j]);
+    for (size_t i = 0; i<= m; i++) {
+        for (size_t j = 0; j<= n; j++) {
+            printf("%lf ", T1[i][j]);
         }
         printf("\n");
     }
     printf("T2:\n");
-    for (size_t i = 0; i< m; i++) {
-        for (size_t j = 0; j< n; j++) {
-            printf("%ld ", T2[i][j]);
+    for (size_t i = 0; i<= m; i++) {
+        for (size_t j = 0; j<= n; j++) {
+            printf("%lf ", T2[i][j]);
         }
         printf("\n");
     }
     printf("T3:\n");
-    for (size_t i = 0; i< m; i++) {
-        for (size_t j = 0; j< n; j++) {
-            printf("%ld ", T3[i][j]);
+    for (size_t i = 0; i<= m; i++) {
+        for (size_t j = 0; j<= n; j++) {
+            printf("%lf ", T3[i][j]);
+        }
+        printf("\n");
+    }
+
+}
+
+void Subproblem::non_parallel_tables() {
+    T1[0][0] = -std::numeric_limits<double>::infinity();
+    T2[0][0] = -std::numeric_limits<double>::infinity();
+    T3[0][0] = -std::numeric_limits<double>::infinity();
+    if (start_type == 1 || start_type == -1) {
+        T1[0][0] = 0;
+    }
+    else if (start_type == -2) {
+        T2[0][0] = 0;
+    }
+    else if (start_type == -3) {
+        T3[0][0] = 0;
+    }
+    for (size_t j = 1; j <= n; j++) {
+        T1[0][j] = -std::numeric_limits<double>::infinity();
+        T3[0][j] = -std::numeric_limits<double>::infinity();
+        if (start_type == -2) {
+            T2[0][j] = -g * j;
+        }
+        else if (start_type == 1 || start_type == 3) {
+            T2[0][j] = -std::numeric_limits<double>::infinity();
+        }
+        else {
+            T2[0][j] = -h - g * j;
+        }
+    }
+    for (size_t i = 1; i <= m; i++) {
+        T1[i][0] = -std::numeric_limits<double>::infinity();
+        T2[i][0] = -std::numeric_limits<double>::infinity();
+        if (start_type == -3) {
+            T3[i][0] = -g * i;
+        }
+        else if (start_type == 1 || start_type == 2) {
+            T3[i][0] = -std::numeric_limits<double>::infinity();
+        }
+        else {
+            T3[i][0] = -h - g * i;
+        }
+        for (size_t j = 1; j <= n; j++) {
+            T1[i][j] = f(i, j) + std::max(std::max(T1[i-1][j-1], T2[i-1][j-1]), T3[i-1][j-1]);
+            T3[i][j] = std::max(std::max(T1[i-1][j] - g - h, T2[i-1][j] - g - h), T3[i-1][j] - g);
+            T2[i][j] = std::max(std::max(T1[i][j-1] -g-h, T2[i][j-1] - g), T3[i][j-1] - g-h); 
+        }
+    }
+    printf("T1:\n");
+    for (size_t i = 0; i<= m; i++) {
+        for (size_t j = 0; j<= n; j++) {
+            printf("%lf ", T1[i][j]);
+        }
+        printf("\n");
+    }
+    printf("T2:\n");
+    for (size_t i = 0; i<= m; i++) {
+        for (size_t j = 0; j<= n; j++) {
+            printf("%lf ", T2[i][j]);
+        }
+        printf("\n");
+    }
+    printf("T3:\n");
+    for (size_t i = 0; i<= m; i++) {
+        for (size_t j = 0; j<= n; j++) {
+            printf("%lf ", T3[i][j]);
         }
         printf("\n");
     }

@@ -17,13 +17,13 @@ public:
     size_t p; // num_processors
     int start_type;
     int end_type;
-    int g;
-    int h;
-    std::vector<std::vector<long int>> T1;
-    std::vector<std::vector<long int>> T2;
-    std::vector<std::vector<long int>> T3;
+    double g;
+    double h;
+    std::vector<std::vector<double>> T1;
+    std::vector<std::vector<double>> T2;
+    std::vector<std::vector<double>> T3;
 
-    Subproblem (char* _A, char* _B, size_t _m, size_t _n, size_t _id_A, size_t _id_B, size_t _p, int start, int end, int _g, int _h) {
+    Subproblem (char* _A, char* _B, size_t _m, size_t _n, size_t _id_A, size_t _id_B, size_t _p, int start, int end, double _g, double _h) {
         if (_m <= n) {
             A = _A;
             B = _B;
@@ -54,22 +54,23 @@ public:
         //first row
 
         for (size_t i = 0; i <= m; i++) {
-            std::vector<long int> t1(n+1);
-            std::vector<long int> t2(n+1);
-            std::vector<long int> t3(n+1);
+            std::vector<double> t1(n+1);
+            std::vector<double> t2(n+1);
+            std::vector<double> t3(n+1);
             T1.push_back(t1);
             T2.push_back(t2);
             T3.push_back(t3);
         }
     }
 
+    void non_parallel_tables();
     static void ComputeRowMapThread13(Subproblem *subp, size_t i, size_t start, size_t end);
-    static void ComputeOmegaMapThread(Subproblem *subp, size_t i, size_t start, size_t end, std::vector<long int> &omega);
-    static void ComputeRowMapThread2(Subproblem *subp, size_t i, size_t start, size_t end, std::vector<long int> &partial);
+    static void ComputeOmegaMapThread(Subproblem *subp, size_t i, size_t start, size_t end, std::vector<double> &omega);
+    static void ComputeRowMapThread2(Subproblem *subp, size_t i, size_t start, size_t end, std::vector<double> &partial);
     static void ComputeFirstRowMapThread(Subproblem *subp, size_t start, size_t end);
     void compute_row(size_t i);
     void compute_tables();
-    long int f(size_t i, size_t j) {
+    double f(size_t i, size_t j) {
         if (A[id_A+i] == B[id_B + j]) {
             return 1;
         }
