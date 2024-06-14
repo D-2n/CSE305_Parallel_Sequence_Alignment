@@ -1,6 +1,7 @@
 #include "subproblem_alignment.h"
 #include <deque>
 
+
 typedef struct parallel_prefix_max_queue_element {
     double value;
     size_t begin_id;
@@ -100,6 +101,69 @@ void ParallelPrefixMax(size_t p, std::vector<double> &values, std::vector<double
 
 }
 
+void Subproblem::find_alignment() {
+    alignment_point curr_point, new_point;
+    size_t i = m;
+    size_t j = n;
+    if (end_type > 0) {
+        curr_point.t = end_type;
+        if (end_type == 1) {
+            curr_point.i = i + id_A;
+            curr_point.j = j + id_B;
+        }
+        else if (end_type == 2) {
+            curr_point.i = 0;
+            curr_point.j = j + id_B;
+        }
+        else {
+            curr_point.i = i + id_A;
+            curr_point.j = 0;
+        }
+    }
+    else {
+        double t1 = T1[m][n];
+        double t2 = T2[m][n] + h_prime(-2);
+        double t3 = T3[m][n] + h_prime(-3);
+        if (t1 >= t2 && t1 >= t3) {
+            curr_point.t = 1;
+            curr_point.i = i + id_A;
+            curr_point.j = j + id_B;
+        }
+        else if (t2 >= t1 && t2 >= t3) {
+            curr_point.t = 2;
+            curr_point.i = 0;
+            curr_point.j = j + id_B;
+        }
+        else {
+            curr_point.t = 3;
+            curr_point.i = i + id_A;
+            curr_point.j = 0;
+        }
+    }
+    while (i > 0 && j > 0) {
+        printf("(i, j, t): %ld, %ld, %d\n", curr_point.i, curr_point.j, curr_point.t);
+        if (curr_point.t == 1) {
+            if (T1[i][j] == f(i, j) + T1[i-1][j-1]) {new_point.t = 1; new_point.i = i-1 + id_A; new_point.j = j-1 + id_A; i--; j--;}
+            else if (T1[i][j] == f(i, j) + T2[i-1][j-1]) {new_point.t = 2; new_point.i = 0; new_point.j = j-1 + id_B; i--; j--;}
+            else if (T1[i][j] == f(i, j) + T3[i-1][j-1]) {new_point.t = 3; new_point.i = i-1 + id_A; new_point.j = 0; i--; j--;}
+
+        }
+        else if (curr_point.t == 2) {
+            if (T2[i][j] == -g - h + T1[i][j-1]) {new_point.t = 1; new_point.i = i + id_A; new_point.j = j-1 + id_B; j--;}
+            else if (T2[i][j] == -g + T2[i][j-1]) {new_point.t = 2; new_point.i = 0; new_point.j = j-1 + id_B; j--;}
+            else if (T2[i][j] == -g - h + T3[i][j-1]) {new_point.t = 3; new_point.i = i + id_A; new_point.j = 0; j--;}
+
+        }
+        else {
+            if (T3[i][j] == -g - h + T1[i-1][j]) {new_point.t = 1; new_point.i = i-1 + id_A; new_point.j = j + id_B; i--;}
+            else if (T3[i][j] == -g - h + T2[i-1][j]) {new_point.t = 2; new_point.i = 0; new_point.j = j + id_B; i--;}
+            else if (T3[i][j] == -g + T3[i-1][j]) {new_point.t = 3; new_point.i = i-1 + id_A; new_point.j = 0; i--;}
+        }
+        curr_point = new_point;
+    }
+    
+}
+
 int main() {
     /*std::vector<double> values = {-1, 3, 5, 1, 2, 7};
     std::vector<double> partial_sums(6);
@@ -108,13 +172,13 @@ int main() {
         printf("%lf ", p);
     }
     printf("\n"); */
-    char* A = "AGGA";
-    char* B = "ATGTC";
+    char* A = "-AGGA";
+    char* B = "-ATGTC";
     size_t m = 4;
     size_t n = 5;
     size_t ida = 0;
     size_t idb = 0;
-    size_t p = 1;
+    size_t p = 3;
     int start_type = -1;
     int end_type = -1;
     double g = 2;
@@ -122,9 +186,10 @@ int main() {
     Subproblem subp = Subproblem(A, B, m, n, ida, idb, p, start_type, end_type, g, h);
     printf("parallel:\n");
     subp.compute_tables();
-
+    /*
     printf("non-parallel:\n");
-    subp.non_parallel_tables();
+    subp.non_parallel_tables();*/
+    subp.find_alignment();
 
     return 0;
 }

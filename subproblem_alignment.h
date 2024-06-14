@@ -5,6 +5,14 @@
 #include <thread>
 #include <vector>
 
+typedef struct alignment_point {
+    size_t i;
+    size_t j;
+    size_t t;
+    struct alignment_point* next = NULL;
+} align;
+
+
 class Subproblem {
 public: 
     char *A;
@@ -51,8 +59,6 @@ public:
         
         /* initialize the tables */
 
-        //first row
-
         for (size_t i = 0; i <= m; i++) {
             std::vector<double> t1(n+1);
             std::vector<double> t2(n+1);
@@ -73,6 +79,13 @@ public:
     double f(size_t i, size_t j) {
         if (A[id_A+i] == B[id_B + j]) {
             return 1;
+        }
+        return 0;
+    }
+    void find_alignment();
+    double h_prime(int k) {
+        if (k == end_type && end_type <= -2) {
+            return h;
         }
         return 0;
     }
