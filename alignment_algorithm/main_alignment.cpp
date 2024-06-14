@@ -297,9 +297,9 @@ void optimal_alignment(char *A, char *B, std::vector<align> partial_bp, size_t n
     print_align(pointers[0]);
 }
 
-int main(){
+int main_alignment_function(char* A, char* B, size_t m, size_t n, size_t p, double g, double h){
     std::vector<align> pbp(0);
-    align s1, s2, s3, s4, s5;
+    /*align s1, s2, s3, s4, s5;
     s1.i = 0; s1.j = 0; s1.t = -1;
     s2.i = 8; s2.j = 7; s2.t = -1;
     s3.i = 16; s3.j = 33; s3.t = -1;
@@ -309,8 +309,8 @@ int main(){
     pbp.push_back(s2);
     pbp.push_back(s3);
     pbp.push_back(s4);
-    pbp.push_back(s5);
-    // load sequences A, B, m, n
+    pbp.push_back(s5); */
+
     char *A;
     char *B;
     size_t m;
