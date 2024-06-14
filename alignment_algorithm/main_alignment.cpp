@@ -56,13 +56,13 @@ void print_seq(char *A, char *B, align *begin) {
 
 
 typedef struct parallel_prefix_queue_element {
-    size_t value;
+    long int value;
     size_t begin_id;
     size_t end_id;
     struct parallel_prefix_queue_element* next;
 } queue_indices;
 
-void PrefixSumMapThread(std::vector<size_t> &sums, size_t value, queue_indices *curr) {
+void PrefixSumMapThread(std::vector<long int> &sums, long int value, queue_indices *curr) {
     if (curr != NULL) {
         for (size_t i = curr->begin_id; i < curr->end_id; i++) {
             sums[i] += value;
@@ -70,7 +70,7 @@ void PrefixSumMapThread(std::vector<size_t> &sums, size_t value, queue_indices *
     }
 }
 
-void PrefixInitMapThread(std::vector<size_t> &values, std::vector<size_t> &sums, queue_indices &q) {
+void PrefixInitMapThread(std::vector<long int> &values, std::vector<long int> &sums, queue_indices &q) {
     sums[q.begin_id] = values[q.begin_id];
     for (size_t i = q.begin_id + 1; i < q.end_id; i++) {
         sums[i] = sums[i-1] + values[i];
@@ -78,7 +78,7 @@ void PrefixInitMapThread(std::vector<size_t> &values, std::vector<size_t> &sums,
     q.value = sums[q.end_id - 1];
 }
 
-void ParallelPrefix(size_t p, std::vector<size_t> &values, std::vector<size_t> &partial_sums) {
+void ParallelPrefix(size_t p, std::vector<long int> &values, std::vector<long int> &partial_sums) {
 
     std::vector<queue_indices> units;
     std::deque<queue_indices*> processes;
@@ -155,18 +155,18 @@ void ParallelPrefix(size_t p, std::vector<size_t> &values, std::vector<size_t> &
 
 }
 
-void ComputeOmegaMapThread(std::vector<align>::iterator begin, std::vector<align>::iterator end, size_t m, size_t n, size_t p, std::vector<size_t> &omega, size_t offset) {
+void ComputeOmegaMapThread(std::vector<align>::iterator begin, std::vector<align>::iterator end, size_t m, size_t n, size_t p, std::vector<long int> &omega, size_t offset) {
     size_t i = 0;
     while (begin + 1 != end) {
-        size_t a = std::ceil(((begin+1)->i - begin->i) * p * 1.0 / m);
-        size_t b = std::ceil(((begin+1)->j - begin->j) * p * 1.0 / n);
+        long int a = std::ceil(1.0 * ((begin+1)->i - begin->i) / ((1.0 * m) / p));
+        long int b = std::ceil(1.0 * ((begin+1)->j - begin->j) / ((1.0 * n) / p));
         omega[i + offset] = std::max(a, b);
         begin++;
         i++;
     }
 }
 
-void compute_omega_parallel(std::vector<align> &partial_bp, size_t m, size_t n, size_t p, size_t len, std::vector<size_t> &omega) {
+void compute_omega_parallel(std::vector<align> &partial_bp, size_t m, size_t n, size_t p, size_t len, std::vector<long int> &omega) {
     size_t block_size = len / p;
     size_t num_threads = p;
     if (p > len) {
@@ -189,7 +189,7 @@ void compute_omega_parallel(std::vector<align> &partial_bp, size_t m, size_t n, 
     }
 }
 
-size_t assign_processors(size_t sum_prev, size_t curr_subproblem) {
+size_t assign_processors(long int sum_prev, long int curr_subproblem) {
     if (sum_prev % 3 == 0) {
         return (curr_subproblem + 2) / 3;
     }
@@ -201,8 +201,8 @@ size_t assign_processors(size_t sum_prev, size_t curr_subproblem) {
 
 void optimal_alignment(char *A, char *B, std::vector<align> partial_bp, size_t m, size_t n, size_t p, double g, double h) {
     size_t num_subproblems = partial_bp.size() - 1;
-    std::vector<size_t> omega(num_subproblems);
-    std::vector<size_t> partial_sums(num_subproblems);
+    std::vector<long int> omega(num_subproblems);
+    std::vector<long int> partial_sums(num_subproblems);
 
     //compute omega
     compute_omega_parallel(partial_bp, m, n, p, num_subproblems, omega);
@@ -213,11 +213,11 @@ void optimal_alignment(char *A, char *B, std::vector<align> partial_bp, size_t m
     /* testing */
     /*
     for(size_t j=0; j<omega.size();j++){
-        printf("%d ", omega[j]);
+        printf("%ld ", omega[j]);
     }
     printf("\n");
     for(size_t j=0; j<partial_sums.size();j++){
-        printf("%d ", partial_sums[j]);
+        printf("%ld ", partial_sums[j]);
     }
     printf("\n");
 
