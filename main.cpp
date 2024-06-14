@@ -12,7 +12,7 @@ int main(){
 
     //import data
     read_and_store_sequences(names,sequences,filename);
-
+    
     test_input_size_thread(names,sequences);
     
    // test_n_cores_thread(names,sequences);

@@ -10,14 +10,16 @@
 #include <algorithm>
 #include <cmath>
 #include <climits>
+#include "../alignment_algorithm/subproblem_alignment.h"
 
 // Define the alignment_point struct
-typedef struct alignment_point {
+/*typedef struct alignment_point {
     size_t i;
     size_t j;
     int t;
     struct alignment_point* next = nullptr;
 } align;
+*/
 
 // Function prototypes
 int score(char a, char b);

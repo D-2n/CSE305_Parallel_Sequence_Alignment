@@ -1,6 +1,6 @@
 CXX = g++
 
-CXXFLAGS = -Wall -Iclasses -Ifunctions
+CXXFLAGS = -Wall -Iclasses -Ifunctions -g
 
 SRCDIRS = . test_functions alignment_algorithm sequence_alignment
 

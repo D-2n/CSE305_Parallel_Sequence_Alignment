@@ -82,13 +82,13 @@ void compare_chars(const std::string &sequence1, const std::string &sequence2, s
     int local_score = 0;
     for (size_t i = start; i < end; ++i){
         if (sequence1[i] == sequence2[i]) {
-            local_score +=1;
+            local_score += 1;
         }
     }
-    score.fetch_add(local_score,std::memory_order_relaxed);
+    score.fetch_add(local_score,std::memory_order_relaxed); 
 }
 /**
-Computes similarity between two sequences: each matching pair of values awards one point, and the total amount is divided by the minimum length
+Computes similarity between two sequences: each matching pair of values awards one point, and the total amount is divided by the maximum length
 of the two sequences. Threaded version.
 * @param sequence1 First gene sequence for comparison
 * @param sequence2 Second gene sequence for comparison

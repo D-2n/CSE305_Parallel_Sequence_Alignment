@@ -23,7 +23,7 @@ test_input_size - Performs a set number of test batches, each of them iterating 
 * @param sequences vector of gene sequences
 * @return 0 if executed correctly
 */
-int test_input_size( std::vector<std::string> &names, std::vector<std::string> &sequences){
+int test_input_size( std::vector<std::string> &names, std::vector<std::string> &sequences){ //non-threaded for simple testing
     std::cout << "Testing with different input sizes\n\n";
     int batches = 2;
     int input_size_increment = 1000;
@@ -62,15 +62,14 @@ int test_input_size( std::vector<std::string> &names, std::vector<std::string> &
 
             char* seq2_char = new char[input_size_min + 2]; // +1 for the null terminator
             std::strncpy(seq2_char+1, seq2.c_str(),input_size_min);
-            std::cout << strlen(seq1_char)<< " sequence 1 length"<< "\n";
-            std::cout << strlen(seq2_char)<< " sequence 2 length"<< "\n";
-            std::cout << "input size min "<<input_size_min << "\n";
+            std::cout << strlen(seq1_char)<< " Sequence 1 length"<< "\n";
+            std::cout << strlen(seq2_char)<< " Sequence 2 length"<< "\n";
+            std::cout << "Input size min "<<input_size_min << "\n";
 
 
             auto start = std::chrono::high_resolution_clock::now();
-            //perform call, also do input size = max(minimal length of the two sequences, provided input size)
+            //perform call, also do input size = min(minimal length of the two sequences, provided input size)
             int res =  main_alignment_function(seq1_char, seq2_char, input_size_min, input_size_min, 32, 1, 2);
-            std::cout << "Got res\n";
             input_sizes[i] = input_size_min;   
             auto end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> elapsed = end - start;
@@ -82,12 +81,12 @@ int test_input_size_thread(  std::vector<std::string> &names, std::vector<std::s
     //get the size of the smallest list
     std::cout << "Testing with different input sizes\n\n";
     size_t available_threads =  std::thread::hardware_concurrency();
-    int test_pairs = 1;
+    int test_pairs = 20;
     int input_size_inc = 100;
     int sequence_one_index;
     int sequence_two_index;
 
-    size_t chunk_size = (test_pairs + available_threads - 1) / available_threads; // Correct chunk size calculation
+    size_t chunk_size = (test_pairs + available_threads - 1) / available_threads; // Correct the chunk size calculation
     size_t n_chunks = available_threads;
     size_t remainder = test_pairs % chunk_size;
 
@@ -120,7 +119,7 @@ int test_input_size_thread(  std::vector<std::string> &names, std::vector<std::s
             size_t minlen = std::min(seq1.size(),seq2.size());
             size_t input_size_min = std::min(input_size, minlen);
             
-
+            // string to char*, 0-th element obsolete
             char* seq1_char = new char[input_size_min + 2]; // +1 for the null terminator
             std::strncpy(seq1_char+1, seq1.c_str(),input_size_min);
 
@@ -130,9 +129,8 @@ int test_input_size_thread(  std::vector<std::string> &names, std::vector<std::s
 
 
             auto start = std::chrono::high_resolution_clock::now();
-            //perform call, also do input size = max(minimal length of the two sequences, provided input size)
+            //perform call, also do input size = min(minimal length of the two sequences, provided input size)
             int res =  main_alignment_function(seq1_char, seq2_char, input_size_min, input_size_min, 32, 1, 2);
-            std::cout << "Got res\n";
             input_sizes[i] = input_size_min;   
             auto end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> elapsed = end - start;
@@ -146,8 +144,8 @@ int test_input_size_thread(  std::vector<std::string> &names, std::vector<std::s
         //get two random sequences
         size_t start = t * chunk_size;
         size_t end = (t == available_threads - 1) ? (test_pairs) : (start + chunk_size); 
-        //input_size = (((t+1) * chunk_size) / 10) * input_size_inc;
-        input_size = 50;
+        //input_size = (((t+1) * chunk_size) / 10) * input_size_inc; //variable, define as needed
+        input_size = 1000;
         threads.emplace_back(test_input_threaded, std::ref(sequences), start, end, input_size);
         
     }
@@ -166,12 +164,12 @@ int test_input_size_thread(  std::vector<std::string> &names, std::vector<std::s
 }
 
 /**
-test_n_cores - Performs a set number of test batches, each of them iterating over sequences while changing the number of available cores.
+test_n_cores_thread - Performs a set number of test batches, each of them iterating over sequences while changing the number of available cores.
 * @param names vector of gene sequence names
 * @param sequences vector of gene sequences
 * @return 0 if executed correctly
 */
-int test_n_cores( std::vector<std::string> &names, std::vector<std::string> &sequences){
+int test_n_cores( std::vector<std::string> &names, std::vector<std::string> &sequences){ //nun-threaded version for simpler testing
     std::cout << "Testing with different number of cores\n\n";
     int batches = 10;
     int n_tests = 5; //number of tests per batch, each with diff number of cores
@@ -215,7 +213,7 @@ int test_n_cores_thread(  std::vector<std::string> &names, std::vector<std::stri
     int sequence_one_index;
     int sequence_two_index;
 
-    size_t chunk_size = (test_pairs + available_threads - 1) / available_threads; // Correct chunk size calculation
+    size_t chunk_size = (test_pairs + available_threads - 1) / available_threads; // Correct the chunk size calculation
     size_t n_chunks = available_threads;
     size_t remainder = test_pairs % chunk_size;
 

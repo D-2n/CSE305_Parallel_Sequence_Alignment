@@ -366,7 +366,6 @@ int main_alignment_function(char* A, char* B, size_t m, size_t n, size_t p, doub
     /*printf("Found partitions\n");
     /*std::cout << partitions.size() << "\n";
     for (auto& part: partitions){
-=======
     
     std::vector<align> pbp(0);
     //findPartialBalancedPartitionParallel(A, B, m, n, p, g, h, -1, -1, pbp);
@@ -402,7 +401,6 @@ int main_alignment_function(char* A, char* B, size_t m, size_t n, size_t p, doub
     pbp.push_back(s2);
     //pbp.push_back(s3);
     //pbp.push_back(s4);
-=======
 
     optimal_alignment(A, B, pbp, m, n, p, g, h);
 
