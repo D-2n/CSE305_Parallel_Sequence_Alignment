@@ -94,7 +94,10 @@ vector<align> find_partition_parallel(vector<vector<int>> &T1, vector<vector<int
     }
 
     for (const auto &max_align : max_aligns) {
-        partition.push_back(max_align);
+        // Only add valid align points
+        if (max_align.i != 0 || max_align.j != 0 || max_align.t != 0) {
+            partition.push_back(max_align);
+        }
     }
 
     partition.push_back({m, n, 1, nullptr});
