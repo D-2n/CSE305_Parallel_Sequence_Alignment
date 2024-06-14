@@ -144,6 +144,17 @@ void Subproblem::find_alignment() {
             curr_point->j = 0;
         }
     }
+    
+    if (invert) {
+        i = curr_point->i;
+        j = curr_point->j;
+        t = curr_point->t;
+        curr_point->i = j;
+        curr_point->j = i;
+        if (t > 1) {
+            curr_point->t = 5 - t;
+        }
+    }
     while (i > 0 && j > 0) {
         //printf("(i, j, t): %ld, %ld, %d\n", curr_point->i, curr_point->j, curr_point->t);
         new_point = (align*)std::malloc(sizeof(align));
@@ -166,6 +177,17 @@ void Subproblem::find_alignment() {
         }
         new_point->next = curr_point;
         curr_point = new_point;
+        
+        if (invert) {
+            i = curr_point->i;
+            j = curr_point->j;
+            t = curr_point->t;
+            curr_point->i = j;
+            curr_point->j = i;
+            if (t > 1) {
+                curr_point->t = 5 - t;
+            }
+        }
     }
     alignment_begin = curr_point->next;
     //print_alignment();
