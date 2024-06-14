@@ -351,7 +351,7 @@ void optimal_alignment(char *A, char *B, std::vector<align> partial_bp, size_t m
 }
 
 int main_alignment_function(char* A, char* B, size_t m, size_t n, size_t p, double g, double h){
-    std::cout << m << "\n";
+    /*std::cout << m << "\n";
 
     A = "-AGGA";
     B = "-AGTGC";
@@ -360,6 +360,13 @@ int main_alignment_function(char* A, char* B, size_t m, size_t n, size_t p, doub
     p = 3;
     g = 1;
     h = 2;
+    */
+    std::vector<align> pbp(0);
+    //findPartialBalancedPartitionParallel(A, B, m, n, p, g, h, -1, -1, partitions);
+    /*printf("Found partitions\n");
+    /*std::cout << partitions.size() << "\n";
+    for (auto& part: partitions){
+=======
     
     std::vector<align> pbp(0);
     //findPartialBalancedPartitionParallel(A, B, m, n, p, g, h, -1, -1, pbp);
@@ -388,13 +395,14 @@ int main_alignment_function(char* A, char* B, size_t m, size_t n, size_t p, doub
     
     align s1, s2, s3, s4;
     s1.i = 0; s1.j = 0; s1.t = -1;
-    s2.i = 4; s2.j = 5; s2.t = 1;
+    s2.i = m; s2.j = n; s2.t = 1;
     //s3.i = 3; s3.j = 4; s3.t = 1;
     //s4.i = m; s4.j = n; s4.t = 1;
     pbp.push_back(s1);
     pbp.push_back(s2);
     //pbp.push_back(s3);
     //pbp.push_back(s4);
+=======
 
     optimal_alignment(A, B, pbp, m, n, p, g, h);
 
