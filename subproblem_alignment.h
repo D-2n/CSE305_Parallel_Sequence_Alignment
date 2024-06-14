@@ -30,9 +30,11 @@ public:
     std::vector<std::vector<double>> T1;
     std::vector<std::vector<double>> T2;
     std::vector<std::vector<double>> T3;
+    align* alignment_begin;
+    align* alignment_end;
 
     Subproblem (char* _A, char* _B, size_t _m, size_t _n, size_t _id_A, size_t _id_B, size_t _p, int start, int end, double _g, double _h) {
-        if (_m <= n) {
+        if (_m <= _n) {
             A = _A;
             B = _B;
             m = _m;
@@ -55,6 +57,8 @@ public:
         end_type = end;
         g = _g;
         h = _h;
+        alignment_begin = NULL;
+        alignment_end = NULL;
 
         
         /* initialize the tables */
@@ -83,6 +87,7 @@ public:
         return 0;
     }
     void find_alignment();
+    void print_alignment();
     double h_prime(int k) {
         if (k == end_type && end_type <= -2) {
             return h;

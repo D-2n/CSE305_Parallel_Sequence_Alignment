@@ -1,5 +1,6 @@
 #include "subproblem_alignment.h"
 #include <deque>
+#include <cstdlib>
 
 
 typedef struct parallel_prefix_max_queue_element {
@@ -102,22 +103,25 @@ void ParallelPrefixMax(size_t p, std::vector<double> &values, std::vector<double
 }
 
 void Subproblem::find_alignment() {
-    alignment_point curr_point, new_point;
+    align *curr_point, *new_point;
+    curr_point = (align*)std::malloc(sizeof(align));
     size_t i = m;
     size_t j = n;
+    curr_point->next = NULL;
+    alignment_end = curr_point;
     if (end_type > 0) {
-        curr_point.t = end_type;
+        curr_point->t = end_type;
         if (end_type == 1) {
-            curr_point.i = i + id_A;
-            curr_point.j = j + id_B;
+            curr_point->i = i + id_A;
+            curr_point->j = j + id_B;
         }
         else if (end_type == 2) {
-            curr_point.i = 0;
-            curr_point.j = j + id_B;
+            curr_point->i = 0;
+            curr_point->j = j + id_B;
         }
         else {
-            curr_point.i = i + id_A;
-            curr_point.j = 0;
+            curr_point->i = i + id_A;
+            curr_point->j = 0;
         }
     }
     else {
@@ -125,43 +129,54 @@ void Subproblem::find_alignment() {
         double t2 = T2[m][n] + h_prime(-2);
         double t3 = T3[m][n] + h_prime(-3);
         if (t1 >= t2 && t1 >= t3) {
-            curr_point.t = 1;
-            curr_point.i = i + id_A;
-            curr_point.j = j + id_B;
+            curr_point->t = 1;
+            curr_point->i = i + id_A;
+            curr_point->j = j + id_B;
         }
         else if (t2 >= t1 && t2 >= t3) {
-            curr_point.t = 2;
-            curr_point.i = 0;
-            curr_point.j = j + id_B;
+            curr_point->t = 2;
+            curr_point->i = 0;
+            curr_point->j = j + id_B;
         }
         else {
-            curr_point.t = 3;
-            curr_point.i = i + id_A;
-            curr_point.j = 0;
+            curr_point->t = 3;
+            curr_point->i = i + id_A;
+            curr_point->j = 0;
         }
     }
     while (i > 0 && j > 0) {
-        printf("(i, j, t): %ld, %ld, %d\n", curr_point.i, curr_point.j, curr_point.t);
-        if (curr_point.t == 1) {
-            if (T1[i][j] == f(i, j) + T1[i-1][j-1]) {new_point.t = 1; new_point.i = i-1 + id_A; new_point.j = j-1 + id_A; i--; j--;}
-            else if (T1[i][j] == f(i, j) + T2[i-1][j-1]) {new_point.t = 2; new_point.i = 0; new_point.j = j-1 + id_B; i--; j--;}
-            else if (T1[i][j] == f(i, j) + T3[i-1][j-1]) {new_point.t = 3; new_point.i = i-1 + id_A; new_point.j = 0; i--; j--;}
+        //printf("(i, j, t): %ld, %ld, %d\n", curr_point->i, curr_point->j, curr_point->t);
+        new_point = (align*)std::malloc(sizeof(align));
+        if (curr_point->t == 1) {
+            if (T1[i][j] == f(i, j) + T1[i-1][j-1]) {new_point->t = 1; new_point->i = i-1 + id_A; new_point->j = j-1 + id_A; i--; j--;}
+            else if (T1[i][j] == f(i, j) + T2[i-1][j-1]) {new_point->t = 2; new_point->i = 0; new_point->j = j-1 + id_B; i--; j--;}
+            else if (T1[i][j] == f(i, j) + T3[i-1][j-1]) {new_point->t = 3; new_point->i = i-1 + id_A; new_point->j = 0; i--; j--;}
 
         }
-        else if (curr_point.t == 2) {
-            if (T2[i][j] == -g - h + T1[i][j-1]) {new_point.t = 1; new_point.i = i + id_A; new_point.j = j-1 + id_B; j--;}
-            else if (T2[i][j] == -g + T2[i][j-1]) {new_point.t = 2; new_point.i = 0; new_point.j = j-1 + id_B; j--;}
-            else if (T2[i][j] == -g - h + T3[i][j-1]) {new_point.t = 3; new_point.i = i + id_A; new_point.j = 0; j--;}
+        else if (curr_point->t == 2) {
+            if (T2[i][j] == -g - h + T1[i][j-1]) {new_point->t = 1; new_point->i = i + id_A; new_point->j = j-1 + id_B; j--;}
+            else if (T2[i][j] == -g + T2[i][j-1]) {new_point->t = 2; new_point->i = 0; new_point->j = j-1 + id_B; j--;}
+            else if (T2[i][j] == -g - h + T3[i][j-1]) {new_point->t = 3; new_point->i = i + id_A; new_point->j = 0; j--;}
 
         }
         else {
-            if (T3[i][j] == -g - h + T1[i-1][j]) {new_point.t = 1; new_point.i = i-1 + id_A; new_point.j = j + id_B; i--;}
-            else if (T3[i][j] == -g - h + T2[i-1][j]) {new_point.t = 2; new_point.i = 0; new_point.j = j + id_B; i--;}
-            else if (T3[i][j] == -g + T3[i-1][j]) {new_point.t = 3; new_point.i = i-1 + id_A; new_point.j = 0; i--;}
+            if (T3[i][j] == -g - h + T1[i-1][j]) {new_point->t = 1; new_point->i = i-1 + id_A; new_point->j = j + id_B; i--;}
+            else if (T3[i][j] == -g - h + T2[i-1][j]) {new_point->t = 2; new_point->i = 0; new_point->j = j + id_B; i--;}
+            else if (T3[i][j] == -g + T3[i-1][j]) {new_point->t = 3; new_point->i = i-1 + id_A; new_point->j = 0; i--;}
         }
+        new_point->next = curr_point;
         curr_point = new_point;
     }
-    
+    alignment_begin = curr_point->next;
+    //print_alignment();
+}
+
+void Subproblem::print_alignment() {
+    align* begin = alignment_begin;
+    while (begin != NULL) {
+        printf("(%ld, %ld, %d)\n", begin->i, begin->j, begin->t);
+        begin = begin -> next;
+    }
 }
 
 int main() {
@@ -184,7 +199,7 @@ int main() {
     double g = 2;
     double h = 1;
     Subproblem subp = Subproblem(A, B, m, n, ida, idb, p, start_type, end_type, g, h);
-    printf("parallel:\n");
+    //printf("parallel:\n");
     subp.compute_tables();
     /*
     printf("non-parallel:\n");
@@ -315,7 +330,7 @@ void Subproblem::compute_tables() {
     for (size_t i = 0; i <= m; i++) {
         compute_row(i);
     }
-    printf("T1:\n");
+    /* printf("T1:\n");
     for (size_t i = 0; i<= m; i++) {
         for (size_t j = 0; j<= n; j++) {
             printf("%lf ", T1[i][j]);
@@ -335,7 +350,7 @@ void Subproblem::compute_tables() {
             printf("%lf ", T3[i][j]);
         }
         printf("\n");
-    }
+    } */
 
 }
 
