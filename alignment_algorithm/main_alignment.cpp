@@ -125,7 +125,7 @@ void ParallelPrefix(size_t p, std::vector<size_t> &values, std::vector<size_t> &
 
 }
 
-void ComputeOmegaMapThread(std::vector<align>::iterator begin, std::vector<align>::iterator end, size_t n, size_t m, size_t p, std::vector<size_t> &omega, size_t offset) {
+void ComputeOmegaMapThread(std::vector<align>::iterator begin, std::vector<align>::iterator end, size_t m, size_t n, size_t p, std::vector<size_t> &omega, size_t offset) {
     size_t i = 0;
     while (begin + 1 != end) {
         size_t a = std::ceil(((begin+1)->i - begin->i) * p * 1.0 / m);
@@ -136,7 +136,7 @@ void ComputeOmegaMapThread(std::vector<align>::iterator begin, std::vector<align
     }
 }
 
-void compute_omega_parallel(std::vector<align> &partial_bp, size_t n, size_t m, size_t p, size_t len, std::vector<size_t> &omega) {
+void compute_omega_parallel(std::vector<align> &partial_bp, size_t m, size_t n, size_t p, size_t len, std::vector<size_t> &omega) {
     size_t block_size = len / p;
     size_t num_threads = p;
     if (p > len) {
@@ -149,10 +149,10 @@ void compute_omega_parallel(std::vector<align> &partial_bp, size_t n, size_t m, 
     std::vector<align>::iterator start_block = begin;
     for(size_t i = 0; i < num_threads - 1; i++) {
         std::vector<align>::iterator end_block = start_block + block_size + 1;
-        workers[i] = std::thread(&ComputeOmegaMapThread, start_block, end_block, n, m, p, std::ref(omega), i*block_size);
+        workers[i] = std::thread(&ComputeOmegaMapThread, start_block, end_block, m, n, p, std::ref(omega), i*block_size);
         start_block += block_size;
     }
-    ComputeOmegaMapThread(start_block, end, n, m, p, omega, (num_threads-1) * block_size);
+    ComputeOmegaMapThread(start_block, end, m, n, p, omega, (num_threads-1) * block_size);
     
     for(size_t i = 0; i < num_threads - 1; i++) {
         workers[i].join();
@@ -169,13 +169,13 @@ size_t assign_processors(size_t sum_prev, size_t curr_subproblem) {
     return 1 + (curr_subproblem + 1) / 3;
 }
 
-void optimal_alignment(char *A, char *B, std::vector<align> partial_bp, size_t n, size_t m, size_t p, double g, double h) {
+void optimal_alignment(char *A, char *B, std::vector<align> partial_bp, size_t m, size_t n, size_t p, double g, double h) {
     size_t num_subproblems = partial_bp.size() - 1;
     std::vector<size_t> omega(num_subproblems);
     std::vector<size_t> partial_sums(num_subproblems);
 
     //compute omega
-    compute_omega_parallel(partial_bp, n, m, p, num_subproblems, omega);
+    compute_omega_parallel(partial_bp, m, n, p, num_subproblems, omega);
 
     // add parallel prefix for partial sum
     ParallelPrefix(p, omega, partial_sums);
