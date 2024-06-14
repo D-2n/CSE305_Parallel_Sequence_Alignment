@@ -1,3 +1,4 @@
+#pragma once
 #ifndef SUBPROBLEM_ALIGNMENT_H
 #define SUBPROBLEM_ALIGNMENT_H
 
