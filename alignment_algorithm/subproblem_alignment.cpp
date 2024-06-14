@@ -144,17 +144,6 @@ void Subproblem::find_alignment() {
             curr_point->j = 0;
         }
     }
-    
-    if (invert) {
-        i = curr_point->i;
-        j = curr_point->j;
-        t = curr_point->t;
-        curr_point->i = j;
-        curr_point->j = i;
-        if (t > 1) {
-            curr_point->t = 5 - t;
-        }
-    }
     while (i > 0 && j > 0) {
         //printf("(i, j, t): %ld, %ld, %d\n", curr_point->i, curr_point->j, curr_point->t);
         new_point = (align*)std::malloc(sizeof(align));
@@ -177,17 +166,6 @@ void Subproblem::find_alignment() {
         }
         new_point->next = curr_point;
         curr_point = new_point;
-        
-        if (invert) {
-            i = curr_point->i;
-            j = curr_point->j;
-            t = curr_point->t;
-            curr_point->i = j;
-            curr_point->j = i;
-            if (t > 1) {
-                curr_point->t = 5 - t;
-            }
-        }
     }
     alignment_begin = curr_point->next;
     //print_alignment();
@@ -200,7 +178,7 @@ void Subproblem::print_alignment() {
         begin = begin -> next;
     }
 }
-
+/*TEST
 int main() {
     /*std::vector<double> values = {-1, 3, 5, 1, 2, 7};
     std::vector<double> partial_sums(6);
@@ -208,7 +186,7 @@ int main() {
     for(auto &p: partial_sums) {
         printf("%lf ", p);
     }
-    printf("\n"); */
+    printf("\n"); 
     char* A = "-AGGA";
     char* B = "-ATGTC";
     size_t m = 4;
@@ -225,12 +203,12 @@ int main() {
     subp.compute_tables();
     /*
     printf("non-parallel:\n");
-    subp.non_parallel_tables();*/
+    subp.non_parallel_tables();
     subp.find_alignment();
 
     return 0;
 }
-
+*/
 void Subproblem::ComputeFirstRowMapThread(Subproblem *subp, size_t start, size_t end) {
     while (start < end) {
         subp->T1[0][start] = -std::numeric_limits<double>::infinity();
