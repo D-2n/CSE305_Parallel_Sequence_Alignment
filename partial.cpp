@@ -1,110 +1,114 @@
 #include <iostream>
 #include <vector>
-#include <cmath>
+#include <thread>
+#include <mutex>
 #include <algorithm>
-#include <tuple>
+#include <cmath>
+#include <climits>
 
 using namespace std;
 
-typedef struct alignment_point {
-    size_t i;
-    size_t j;
-    int t;
-    struct alignment_point* next = nullptr;
-} align;
+struct Cell {
+    int i, j, type;
+};
 
-const double MATCH_SCORE = 2;
-const double MISMATCH_PENALTY = 0;
-const double GAP_OPEN_PENALTY = 2;
-const double GAP_EXTENSION_PENALTY = 1;
+struct Subproblem {
+    int i0, j0, i1, j1;
+    int startType, endType;
+};
 
-double match_score(char a, char b) {
-    return (a == b) ? MATCH_SCORE : MISMATCH_PENALTY;
+mutex mtx;
+
+// Example scoring and gap penalty functions
+int score(char a, char b) {
+    return (a == b) ? 2 : -1;
 }
 
-void initialize_tables(vector<vector<double>>& T1, vector<vector<double>>& T2, vector<vector<double>>& T3, int m, int n) {
-    T1.assign(m + 1, vector<double>(n + 1, -INFINITY));
-    T2.assign(m + 1, vector<double>(n + 1, -INFINITY));
-    T3.assign(m + 1, vector<double>(n + 1, -INFINITY));
+int gapPenalty(int k) {
+    return 2 + k;
 }
 
-void fill_tables(const string& A, const string& B, vector<vector<double>>& T1, vector<vector<double>>& T2, vector<vector<double>>& T3) {
-    int m = A.length();
-    int n = B.length();
-    
+// Function to initialize tables
+void initializeTables(vector<vector<int>>& T1, vector<vector<int>>& T2, vector<vector<int>>& T3, int m, int n, int startType) {
     for (int i = 0; i <= m; ++i) {
         for (int j = 0; j <= n; ++j) {
-            if (i == 0 || j == 0) {
-                T1[i][j] = T2[i][j] = T3[i][j] = 0;
-            } else {
-                T1[i][j] = match_score(A[i-1], B[j-1]) + max({T1[i-1][j-1], T2[i-1][j-1], T3[i-1][j-1]});
-                T2[i][j] = max({T1[i][j-1] - GAP_OPEN_PENALTY, T2[i][j-1] - GAP_EXTENSION_PENALTY, T3[i][j-1] - GAP_OPEN_PENALTY});
-                T3[i][j] = max({T1[i-1][j] - GAP_OPEN_PENALTY, T2[i-1][j] - GAP_OPEN_PENALTY, T3[i-1][j] - GAP_EXTENSION_PENALTY});
-            }
+            T1[i][j] = T2[i][j] = T3[i][j] = INT_MIN;
+        }
+    }
+    T1[0][0] = T2[0][0] = T3[0][0] = 0;
+}
+
+// Function to fill the tables
+void fillTables(vector<vector<int>>& T1, vector<vector<int>>& T2, vector<vector<int>>& T3, const string& A, const string& B) {
+    int m = A.size();
+    int n = B.size();
+    for (int i = 1; i <= m; ++i) {
+        for (int j = 1; j <= n; ++j) {
+            T1[i][j] = score(A[i-1], B[j-1]) + max({T1[i-1][j-1], T2[i-1][j-1], T3[i-1][j-1]});
+            T2[i][j] = max({T1[i][j-1] - gapPenalty(1), T2[i][j-1] - 1, T3[i][j-1] - gapPenalty(1)});
+            T3[i][j] = max({T1[i-1][j] - gapPenalty(1), T2[i-1][j] - gapPenalty(1), T3[i-1][j] - 1});
         }
     }
 }
 
-void traceback_path(const vector<vector<double>>& T1, const vector<vector<double>>& T2, const vector<vector<double>>& T3, vector<align>& partial_bp, int start_i, int start_j) {
-    int m = T1.size() - 1;
-    int n = T1[0].size() - 1;
-    int i = m, j = n;
+// Function to find the partial balanced partition
+void findPartition(vector<Subproblem>& partitions, const string& A, const string& B, int p) {
+    int m = A.size();
+    int n = B.size();
+    vector<vector<int>> T1(m + 1, vector<int>(n + 1));
+    vector<vector<int>> T2(m + 1, vector<int>(n + 1));
+    vector<vector<int>> T3(m + 1, vector<int>(n + 1));
 
-    while (i > 0 && j > 0) {
-        if (T1[i][j] >= T2[i][j] && T1[i][j] >= T3[i][j]) {
-            size_t i_ = start_i + i;
-            size_t j_ = start_j + j;
-            partial_bp.push_back({i_, j_, 1});
-            --i;
-            --j;
-        } else if (T2[i][j] >= T1[i][j] && T2[i][j] >= T3[i][j]) {
-            size_t i_ = start_i + i;
-            size_t j_ = start_j + j;
-            partial_bp.push_back({i_, j_, 2});
-            --j;
-        } else {
-            size_t i_ = start_i + i;
-            size_t j_ = start_j + j;
-            partial_bp.push_back({i_, j_, 3});
-            --i;
-        }
+    initializeTables(T1, T2, T3, m, n, -1);
+    fillTables(T1, T2, T3, A, B);
+
+    int rowPartSize = m / p;
+    int colPartSize = n / p;
+
+    for (int i = 0; i < p; ++i) {
+        int i0 = i * rowPartSize;
+        int i1 = (i + 1) * rowPartSize - 1;
+        int j0 = i * colPartSize;
+        int j1 = (i + 1) * colPartSize - 1;
+
+        int startType = (i == 0) ? -1 : (i % 3) + 1;
+        int endType = ((i + 1) % 3) + 1;
+
+        partitions.push_back({i0, j0, i1, j1, startType, endType});
     }
-    partial_bp.push_back({start_i, start_j, 0}); // Add start point with a special value for t
-    reverse(partial_bp.begin(), partial_bp.end());
 }
 
-// This function computes the partition points for the sequences based on the number of processors.
-vector<align> compute_partitions(const string& A, const string& B, int num_partitions) {
-    int m = A.length();
-    int n = B.length();
-    vector<align> partitions;
-    int step_i = m / num_partitions;
-    int step_j = n / num_partitions;
+// Thread function to process subproblems
+void processSubproblems(vector<Subproblem>& partitions, int threadId, int p) {
+    int subproblemSize = partitions.size() / p;
+    int start = threadId * subproblemSize;
+    int end = (threadId + 1) * subproblemSize;
 
-    for (int t = 0; t < num_partitions; ++t) {
-        int start_i = t * step_i;
-        int end_i = (t == num_partitions - 1) ? m : (t + 1) * step_i - 1;
-        int start_j = t * step_j;
-        int end_j = (t == num_partitions - 1) ? n : (t + 1) * step_j - 1;
-        
-        partitions.push_back({start_i, start_j, 0});
-        partitions.push_back({end_i, end_j, 0});
+    for (int i = start; i < end; ++i) {
+        // Processing the subproblem (for demonstration, just print the details)
+        mtx.lock();
+        cout << "Thread " << threadId << " processing subproblem: (" << partitions[i].i0 << "," << partitions[i].j0 << ") to ("
+             << partitions[i].i1 << "," << partitions[i].j1 << "), startType: " << partitions[i].startType << ", endType: " << partitions[i].endType << endl;
+        mtx.unlock();
     }
-
-    return partitions;
 }
 
 int main() {
+    int p = 4; // Number of processors
     string A = "ATGTCGA";
     string B = "AGAATCTA";
-    
-    int num_partitions = 4; // Example number of partitions
-    vector<align> partitions = compute_partitions(A, B, num_partitions);
 
-    for (const auto& partition : partitions) {
-        cout << "Partition: (" << partition.i << ", " << partition.j << ", " << partition.t << ")\n";
+    vector<Subproblem> partitions;
+    findPartition(partitions, A, B, p);
+
+    vector<thread> threads;
+    for (int i = 0; i < p; ++i) {
+        threads.push_back(thread(processSubproblems, ref(partitions), i, p));
+    }
+
+    for (auto& th : threads) {
+        th.join();
     }
 
     return 0;
 }
-
