@@ -25,7 +25,7 @@ test_input_size - Performs a set number of test batches, each of them iterating 
 */
 int test_input_size( std::vector<std::string> &names, std::vector<std::string> &sequences){
     std::cout << "Testing with different input sizes\n\n";
-    int batches = 10;
+    int batches = 2;
     int input_size_increment = 1000;
 
     int sequence_one_index;
@@ -45,16 +45,35 @@ int test_input_size( std::vector<std::string> &names, std::vector<std::string> &
         }
         size_t sequence_size = std::min(sequences[sequence_one_index].size(),sequences[sequence_two_index].size());
         
+        std::vector<double> input_sizes(batches);
+        std::vector<std::chrono::duration<double>> execution_times(batches);
         std::cout << "Testing sequences \n" << names[sequence_one_index] << "\n and \n" << names[sequence_two_index] << "\n\n";
-        for (size_t i = 1; i * input_size_increment < sequence_size; i++){
-            std::cout << "Testing with input size: " << i * input_size_increment << "\n";
-            auto start = std::chrono::high_resolution_clock::now();
+        for (size_t i = 1; i < batches; i++){
+            sequence_one_index = rand() % range;
+            sequence_two_index = rand() % range;
+            std::string seq1 = sequences[sequence_one_index];
+            std::string seq2 = sequences[sequence_two_index];
 
-            std::this_thread::sleep_for(std::chrono::seconds(2)); //replace with main function call when
+            size_t minlen = std::min(seq1.size(),seq2.size());
+            size_t input_size_min = std::min(i*input_size_increment, minlen);
+            
+            char* seq1_char = new char[input_size_min + 2]; // +1 for the null terminator
+            std::strncpy(seq1_char+1, seq1.c_str(),input_size_min);
+
+            char* seq2_char = new char[input_size_min + 2]; // +1 for the null terminator
+            std::strncpy(seq2_char+1, seq2.c_str(),input_size_min);
+            std::cout << strlen(seq1_char)<< " sequence 1 length"<< "\n";
+            std::cout << strlen(seq2_char)<< " sequence 2 length"<< "\n";
+            std::cout << "input size min "<<input_size_min << "\n";
+
+
+            auto start = std::chrono::high_resolution_clock::now();
+            //perform call, also do input size = max(minimal length of the two sequences, provided input size)
+            int res =  main_alignment_function(seq1_char, seq2_char, input_size_min, input_size_min, 32, 1, 2);
+            std::cout << "Got res\n";
+            input_sizes[i] = input_size_min;   
             auto end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> elapsed = end - start;
-
-            std::cout << "Execution time: " << elapsed.count() << " seconds\n";
         }
     }
     return 0;
@@ -63,7 +82,7 @@ int test_input_size_thread(  std::vector<std::string> &names, std::vector<std::s
     //get the size of the smallest list
     std::cout << "Testing with different input sizes\n\n";
     size_t available_threads =  std::thread::hardware_concurrency();
-    int test_pairs = 2000;
+    int test_pairs = 1;
     int input_size_inc = 100;
     int sequence_one_index;
     int sequence_two_index;
@@ -112,7 +131,8 @@ int test_input_size_thread(  std::vector<std::string> &names, std::vector<std::s
 
             auto start = std::chrono::high_resolution_clock::now();
             //perform call, also do input size = max(minimal length of the two sequences, provided input size)
-            int res =  main_alignment_function(seq1_char, seq2_char, input_size_min, input_size_min, 64, 1, 2);
+            int res =  main_alignment_function(seq1_char, seq2_char, input_size_min, input_size_min, 32, 1, 2);
+            std::cout << "Got res\n";
             input_sizes[i] = input_size_min;   
             auto end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> elapsed = end - start;
@@ -127,7 +147,7 @@ int test_input_size_thread(  std::vector<std::string> &names, std::vector<std::s
         size_t start = t * chunk_size;
         size_t end = (t == available_threads - 1) ? (test_pairs) : (start + chunk_size); 
         //input_size = (((t+1) * chunk_size) / 10) * input_size_inc;
-        input_size = 100000;
+        input_size = 50;
         threads.emplace_back(test_input_threaded, std::ref(sequences), start, end, input_size);
         
     }
@@ -177,8 +197,7 @@ int test_n_cores( std::vector<std::string> &names, std::vector<std::string> &seq
             n_cores = rand(); //change to appropriate when ready
             std::cout <<"("<< i <<"/" << n_tests << ") " <<"Testing with number of cores: " << n_cores << "\n";
             auto start = std::chrono::high_resolution_clock::now();
-
-            std::this_thread::sleep_for(std::chrono::seconds(2)); //replace with main function call when
+            
             auto end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> elapsed = end - start;
 
@@ -226,9 +245,20 @@ int test_n_cores_thread(  std::vector<std::string> &names, std::vector<std::stri
             std::string seq1 = sequences[sequence_one_index];
             std::string seq2 = sequences[sequence_two_index];
 
+            size_t minlen = std::min(seq1.size(),seq2.size());
+            size_t input_size_min = minlen;
+            
+
+            char* seq1_char = new char[input_size_min + 2]; // +1 for the null terminator
+            std::strncpy(seq1_char+1, seq1.c_str(),input_size_min);
+
+            char* seq2_char = new char[input_size_min + 2]; // +1 for the null terminator
+            std::strncpy(seq2_char+1, seq2.c_str(),input_size_min);
+            
+            n_cores_list[i] = n_cores;
             auto start = std::chrono::high_resolution_clock::now();
             //perform call, also do input size = max(minimal length of the two sequences, provided input size)
-            n_cores_list[i] = n_cores;
+            int res =  main_alignment_function(seq1_char, seq2_char, input_size_min, input_size_min, n_cores, 1, 2);
             auto end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> elapsed = end - start;
             
@@ -298,10 +328,21 @@ int test_similarity( std::vector<std::string> &names, std::vector<std::string> &
             sequence_two_index = rand() % range;
             std::string seq1 = sequences[sequence_one_index];
             std::string seq2 = sequences[sequence_two_index];
+            
+            size_t minlen = std::min(seq1.size(),seq2.size());
+            size_t input_size_min = minlen;
+            
 
+            char* seq1_char = new char[input_size_min + 2]; // +1 for the null terminator
+            std::strncpy(seq1_char+1, seq1.c_str(),input_size_min);
+
+            char* seq2_char = new char[input_size_min + 2]; // +1 for the null terminator
+            std::strncpy(seq2_char+1, seq2.c_str(),input_size_min);
+
+            similarity_results[i] = sequence_similarity(std::ref(seq1), std::ref(seq2));
             auto start = std::chrono::high_resolution_clock::now();
             
-            similarity_results[i] = sequence_similarity(std::ref(seq1), std::ref(seq2));
+            int res =  main_alignment_function(seq1_char, seq2_char, input_size_min, input_size_min, 64, 1, 2);
             auto end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> elapsed = end - start;
             

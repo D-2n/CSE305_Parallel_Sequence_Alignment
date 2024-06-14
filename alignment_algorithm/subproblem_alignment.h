@@ -1,4 +1,3 @@
-#pragma once
 #ifndef SUBPROBLEM_ALIGNMENT_H
 #define SUBPROBLEM_ALIGNMENT_H
 
@@ -9,7 +8,7 @@
 typedef struct alignment_point {
     size_t i;
     size_t j;
-    size_t t;
+    int t;
     struct alignment_point* next = NULL;
 } align;
 

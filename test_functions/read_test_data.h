@@ -1,4 +1,4 @@
-
+#pragma once
 #ifndef read_test_data_H
 #define read_test_data_H
 

@@ -9,13 +9,16 @@
 
 
 void OptimalAlignmentMapThread(char *A, char *B, size_t m, size_t n, size_t ida, size_t idb, size_t p, int start_type, int end_type, double g, double h, align* &begin, align* &end){
-    
+    printf("bp1\n");
     Subproblem subp = Subproblem(A, B, m, n, ida, idb, p, start_type, end_type, g, h);
-   
+    printf("bp1.2\n");
     subp.compute_tables();
+    printf("bp2\n");
     subp.find_alignment();
+    printf("bp3\n");
     begin = subp.alignment_begin;
     end = subp.alignment_end;
+    printf("bp4\n");
 }
 
 
@@ -271,6 +274,7 @@ void optimal_alignment(char *A, char *B, std::vector<align> partial_bp, size_t m
     for(size_t i=0; i<num_subproblems - 3; i += 3) {
         workers[i].join();
     }
+    
 
     // solve subproblems 1, 4, ...
     i = 1;
@@ -340,16 +344,22 @@ void optimal_alignment(char *A, char *B, std::vector<align> partial_bp, size_t m
 }
 
 int main_alignment_function(char* A, char* B, size_t m, size_t n, size_t p, double g, double h){
-    std::vector<align> pbp(0);
-    
-    std::vector<Subproblem_p> partitions;
-    findPartition(partitions, A, B, p);
-    // to comment when pbp is done
+    std::cout << m << "\n";
+
     A = "-AGGA";
     B = "-AGTGC";
     m = 4;
     n = 5;
-
+    p = 32;
+    g = 1;
+    h = 2;
+    
+    std::vector<align> partitions;
+    findPartialBalancedPartitionParallel(A, B, m, n, p, g, h, partitions);
+    printf("Found partitions\n");
+    std::cout << partitions.size() << "\n";
+    // to comment when pbp is done
+    /*
     align s1, s2, s3, s4, s5;
     s1.i = 0; s1.j = 0; s1.t = -1;
     s2.i = 8; s2.j = 7; s2.t = -1;
@@ -361,7 +371,7 @@ int main_alignment_function(char* A, char* B, size_t m, size_t n, size_t p, doub
     pbp.push_back(s3);
     pbp.push_back(s4);
     pbp.push_back(s5);
-    
+    */
     // uncomment when pbp is done
     // optimal_partition(A, B, m, n, pbp, p);
     
@@ -377,7 +387,7 @@ int main_alignment_function(char* A, char* B, size_t m, size_t n, size_t p, doub
     pbp.push_back(s4);
     */
 
-    optimal_alignment(A, B, pbp, m, n, p, g, h);
+    optimal_alignment(A, B, partitions, m, n, p, g, h);
 
     return 0;
 }

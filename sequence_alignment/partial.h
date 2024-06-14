@@ -12,33 +12,22 @@
 #include <climits>
 
 using namespace std;
-
-struct Cell {
-    int i, j, type;
-};
-
-struct Subproblem_p {
-    int i0, j0, i1, j1;
-    int startType, endType;
-};
-
-
-// Example scoring and gap penalty functions
 int score(char a, char b);
+void initializeTables(std::vector<std::vector<int>>& T, size_t m, size_t n);
 
-int gapPenalty(int k);
+void fillTablesParallel(const char* A, const char* B, size_t m, size_t n, 
+    std::vector<std::vector<int>>& T1, std::vector<std::vector<int>>& T2, 
+    std::vector<std::vector<int>>& T3, double g, double h, size_t p) ;
 
-// Function to initialize tables
-void initializeTables(vector<vector<int>>& T1, vector<vector<int>>& T2, vector<vector<int>>& T3, int m, int n, int startType);
+void fillReverseTablesParallel(const char* A, const char* B, size_t m, size_t n, 
+    std::vector<std::vector<int>>& TR1, std::vector<std::vector<int>>& TR2, 
+    std::vector<std::vector<int>>& TR3, double g, double h, size_t p);
 
-// Function to fill the tables
-void fillTables(vector<vector<int>>& T1, vector<vector<int>>& T2, vector<vector<int>>& T3, const string& A, const string& B);
+std::vector<align> findPartitionParallel(const std::vector<std::vector<int>>& T1, const std::vector<std::vector<int>>& T2, const std::vector<std::vector<int>>& T3, 
+    const std::vector<std::vector<int>>& TR1, const std::vector<std::vector<int>>& TR2, const std::vector<std::vector<int>>& TR3, 
+    size_t m, size_t n, size_t p, double h);
 
+void findPartialBalancedPartitionParallel(const char* A, const char* B, size_t m, size_t n, size_t p, double g, double h, std::vector<align>& partition);
 
-// Function to find the partial balanced partition
-void findPartition(vector<Subproblem_p>& partitions, const string& A, const string& B, int p);
-
-// Thread function to process subproblems
-void processSubproblems(vector<Subproblem_p>& partitions, int threadId, int p);
 
 #endif
