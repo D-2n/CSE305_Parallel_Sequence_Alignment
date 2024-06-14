@@ -9,7 +9,7 @@
 #include <deque>
 #include "subproblem_alignment.h"
 typedef struct parallel_prefix_queue_element {
-    size_t value;
+    long int value;
     size_t begin_id;
     size_t end_id;
     struct parallel_prefix_queue_element* next;
@@ -19,19 +19,19 @@ void OptimalAlignmentMapThread(char *A, char *B, size_t m, size_t n, size_t ida,
 void print_align(align *begin);
 
 
-void PrefixSumMapThread(std::vector<size_t> &sums, size_t value, queue_indices *curr);
+void PrefixSumMapThread(std::vector<long int> &sums, long int value, queue_indices *curr);
 
 
-void PrefixInitMapThread(std::vector<size_t> &values, std::vector<size_t> &sums, queue_indices &q);
+void PrefixInitMapThread(std::vector<long int> &values, std::vector<long int> &sums, queue_indices &q);
 
-void ParallelPrefix(size_t p, std::vector<size_t> &values, std::vector<size_t> &partial_sums);
+void ParallelPrefix(size_t p, std::vector<long int> &values, std::vector<long int> &partial_sums);
 
-void ComputeOmegaMapThread(std::vector<align>::iterator begin, std::vector<align>::iterator end, size_t n, size_t m, size_t p, std::vector<size_t> &omega, size_t offset);
+void ComputeOmegaMapThread(std::vector<align>::iterator begin, std::vector<align>::iterator end, size_t n, size_t m, size_t p, std::vector<long int> &omega, long int offset);
 
 
-void compute_omega_parallel(std::vector<align> &partial_bp, size_t n, size_t m, size_t p, size_t len, std::vector<size_t> &omega);
+void compute_omega_parallel(std::vector<align> &partial_bp, size_t n, size_t m, size_t p, size_t len, std::vector<long int> &omega);
 
-size_t assign_processors(size_t sum_prev, size_t curr_subproblem);
+size_t assign_processors(long int sum_prev, long int curr_subproblem);
 
 void optimal_alignment(char *A, char *B, std::vector<align> partial_bp, size_t n, size_t m, size_t p, double g, double h);
 
