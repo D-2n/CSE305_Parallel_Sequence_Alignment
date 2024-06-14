@@ -1,10 +1,10 @@
-#include <iostream>
 #include <vector>
-#include <thread>
-#include <cmath>
 #include <algorithm>
-
-using namespace std;
+#include <omp.h>
+#include <ostream>
+#include <climits>
+#include <cstring>
+#include <iostream>
 
 typedef struct alignment_point {
     size_t i;
@@ -13,135 +13,146 @@ typedef struct alignment_point {
     struct alignment_point* next = NULL;
 } align;
 
-void fill_tables_parallel(char *A, char *B, size_t m, size_t n, vector<vector<int>> &T1, vector<vector<int>> &T2, vector<vector<int>> &T3, double g, double h, size_t p) {
-    auto fill_chunk = [&](size_t start_row, size_t end_row) {
-        for (size_t i = start_row; i <= end_row; i++) {
-            for (size_t j = 1; j <= n; j++) {
-                T1[i][j] = max({T1[i-1][j-1], T2[i-1][j-1], T3[i-1][j-1]}) + (A[i-1] == B[j-1] ? 0 : 1);
-                T2[i][j] = max({T1[i][j-1] - g - h, T2[i][j-1] - g, T3[i][j-1] - g - h});
-                T3[i][j] = max({T1[i-1][j] - g - h, T2[i-1][j] - g - h, T3[i-1][j] - g});
-            }
-        }
-    };
+int score(char a, char b) {
+    return (a == b) ? 0 : 1;
+}
 
-    vector<thread> threads;
-    size_t chunk_size = m / p;
-    for (size_t i = 0; i < p; i++) {
-        size_t start_row = i * chunk_size + 1;
-        size_t end_row = (i == p - 1) ? m : (i + 1) * chunk_size;
-        threads.emplace_back(fill_chunk, start_row, end_row);
+void initializeTables(std::vector<std::vector<int>>& T, size_t m, size_t n) {
+    for (size_t i = 0; i <= m; ++i) {
+        T[i][0] = 0;
     }
-
-    for (auto &t : threads) {
-        t.join();
+    for (size_t j = 0; j <= n; ++j) {
+        T[0][j] = 0;
     }
 }
 
-vector<align> find_partition_parallel(vector<vector<int>> &T1, vector<vector<int>> &T2, vector<vector<int>> &T3, size_t m, size_t n, size_t p) {
-    vector<align> partition;
+void fillTablesParallel(const char* A, const char* B, size_t m, size_t n, 
+    std::vector<std::vector<int>>& T1, std::vector<std::vector<int>>& T2, 
+    std::vector<std::vector<int>>& T3, double g, double h, size_t p) {
+    
+    #pragma omp parallel for num_threads(p)
+    for (size_t i = 1; i <= m; ++i) {
+        for (size_t j = 1; j <= n; ++j) {
+            T1[i][j] = std::max({T1[i-1][j-1] + score(A[i-1], B[j-1]), T2[i-1][j-1] + score(A[i-1], B[j-1]), T3[i-1][j-1] + score(A[i-1], B[j-1])});
+            T2[i][j] = std::max({T1[i][j-1] - (int)(g + h), T2[i][j-1] - (int)g, T3[i][j-1] - (int)(g + h)});
+            T3[i][j] = std::max({T1[i-1][j] - (int)(g + h), T2[i-1][j] - (int)(g + h), T3[i-1][j] - (int)g});
+        }
+    }
+}
 
+void fillReverseTablesParallel(const char* A, const char* B, size_t m, size_t n, 
+    std::vector<std::vector<int>>& TR1, std::vector<std::vector<int>>& TR2, 
+    std::vector<std::vector<int>>& TR3, double g, double h, size_t p) {
+    
+    #pragma omp parallel for num_threads(p)
+    for (size_t i = m; i > 0; --i) {
+        for (size_t j = n; j > 0; --j) {
+            TR1[i][j] = std::max({TR1[i+1][j+1] + score(A[i-1], B[j-1]), TR2[i+1][j+1] + score(A[i-1], B[j-1]), TR3[i+1][j+1] + score(A[i-1], B[j-1])});
+            TR2[i][j] = std::max({TR1[i][j+1] - (int)(g + h), TR2[i][j+1] - (int)g, TR3[i][j+1] - (int)(g + h)});
+            TR3[i][j] = std::max({TR1[i+1][j] - (int)(g + h), TR2[i+1][j] - (int)(g + h), TR3[i+1][j] - (int)g});
+        }
+    }
+}
+
+std::vector<align> findPartitionParallel(const std::vector<std::vector<int>>& T1, const std::vector<std::vector<int>>& T2, const std::vector<std::vector<int>>& T3, 
+    const std::vector<std::vector<int>>& TR1, const std::vector<std::vector<int>>& TR2, const std::vector<std::vector<int>>& TR3, 
+    size_t m, size_t n, size_t p, double h) {
+    
+    std::vector<align> partition;
     size_t block_size_m = m / p;
     size_t block_size_n = n / p;
 
     partition.push_back({0, 0, -1, nullptr});
 
-    auto find_max_in_block = [&](size_t i, align &max_align) {
-        size_t row = i * block_size_m;
-        size_t col = i * block_size_n;
+    #pragma omp parallel for num_threads(p)
+    for (size_t k = 1; k < p; ++k) {
+        int max_val = INT_MIN;
+        align best_align = {0, 0, 0, nullptr};
 
-        int max_score = -1;
-
-        for (size_t j = 1; j < n; j++) {
-            if (T1[row][j] > max_score) {
-                max_score = T1[row][j];
-                max_align = {row, j, 1, nullptr};
-            }
-            if (T2[row][j] > max_score) {
-                max_score = T2[row][j];
-                max_align = {row, j, 2, nullptr};
-            }
-            if (T3[row][j] > max_score) {
-                max_score = T3[row][j];
-                max_align = {row, j, 3, nullptr};
-            }
-        }
-
-        for (size_t k = 1; k < m; k++) {
-            if (T1[k][col] > max_score) {
-                max_score = T1[k][col];
-                max_align = {k, col, 1, nullptr};
-            }
-            if (T2[k][col] > max_score) {
-                max_score = T2[k][col];
-                max_align = {k, col, 2, nullptr};
-            }
-            if (T3[k][col] > max_score) {
-                max_score = T3[k][col];
-                max_align = {k, col, 3, nullptr};
+        // Find max value in the special row
+        for (size_t i = k * block_size_m; i < (k + 1) * block_size_m && i <= m; ++i) {
+            for (size_t j = 1; j <= n; ++j) {
+                int val = std::max({
+                    T1[i][j] + TR1[i][j],
+                    T2[i][j] + TR2[i][j] + (int)h,
+                    T3[i][j] + TR3[i][j] + (int)h
+                });
+                if (val > max_val) {
+                    max_val = val;
+                    best_align = {i, j, (T1[i][j] >= T2[i][j] && T1[i][j] >= T3[i][j]) ? 1 : (T2[i][j] >= T3[i][j]) ? 2 : 3, nullptr};
+                }
             }
         }
-    };
+        #pragma omp critical
+        partition.push_back(best_align);
 
-    vector<thread> threads;
-    vector<align> max_aligns(p);
+        max_val = INT_MIN;
+        best_align = {0, 0, 0, nullptr};
 
-    for (size_t i = 1; i < p; i++) {
-        threads.emplace_back(find_max_in_block, i, ref(max_aligns[i]));
-    }
-
-    for (auto &t : threads) {
-        t.join();
-    }
-
-    for (const auto &max_align : max_aligns) {
-        // Only add valid align points
-        if (max_align.i != 0 || max_align.j != 0 || max_align.t != 0) {
-            partition.push_back(max_align);
+        // Find max value in the special column
+        for (size_t j = k * block_size_n; j < (k + 1) * block_size_n && j <= n; ++j) {
+            for (size_t i = 1; i <= m; ++i) {
+                int val = std::max({
+                    T1[i][j] + TR1[i][j],
+                    T2[i][j] + TR2[i][j] + (int)h,
+                    T3[i][j] + TR3[i][j] + (int)h
+                });
+                if (val > max_val) {
+                    max_val = val;
+                    best_align = {i, j, (T1[i][j] >= T2[i][j] && T1[i][j] >= T3[i][j]) ? 1 : (T2[i][j] >= T3[i][j]) ? 2 : 3, nullptr};
+                }
+            }
         }
+        #pragma omp critical
+        partition.push_back(best_align);
     }
 
     partition.push_back({m, n, 1, nullptr});
+
+    std::sort(partition.begin(), partition.end(), [](const align& a, const align& b) {
+        return (a.i < b.i) || (a.i == b.i && a.j < b.j);
+    });
+
     return partition;
 }
 
-void find_partial_balanced_partition_parallel(char *A, char *B, size_t m, size_t n, size_t p, double g, double h, vector<align> &partition) {
-    vector<vector<int>> T1(m + 1, vector<int>(n + 1));
-    vector<vector<int>> T2(m + 1, vector<int>(n + 1));
-    vector<vector<int>> T3(m + 1, vector<int>(n + 1));
-    
-    // Initialize the tables
-    for (size_t i = 0; i <= m; i++) {
-        T1[i][0] = -1;
-        T2[i][0] = -1;
-        T3[i][0] = -1;
-    }
-    for (size_t j = 0; j <= n; j++) {
-        T1[0][j] = -1;
-        T2[0][j] = -1;
-        T3[0][j] = -1;
-    }
-    T1[0][0] = 0;
+void findPartialBalancedPartitionParallel(const char* A, const char* B, size_t m, size_t n, size_t p, double g, double h, std::vector<align>& partition) {
+    std::vector<std::vector<int>> T1(m + 1, std::vector<int>(n + 1));
+    std::vector<std::vector<int>> T2(m + 1, std::vector<int>(n + 1));
+    std::vector<std::vector<int>> T3(m + 1, std::vector<int>(n + 1));
+    std::vector<std::vector<int>> TR1(m + 2, std::vector<int>(n + 2, 0));
+    std::vector<std::vector<int>> TR2(m + 2, std::vector<int>(n + 2, 0));
+    std::vector<std::vector<int>> TR3(m + 2, std::vector<int>(n + 2, 0));
 
-    fill_tables_parallel(A, B, m, n, T1, T2, T3, g, h, p);
-    partition = find_partition_parallel(T1, T2, T3, m, n, p);
+    initializeTables(T1, m, n);
+    initializeTables(T2, m, n);
+    initializeTables(T3, m, n);
+    initializeTables(TR1, m+1, n+1);
+    initializeTables(TR2, m+1, n+1);
+    initializeTables(TR3, m+1, n+1);
+
+    fillTablesParallel(A, B, m, n, T1, T2, T3, g, h, p);
+    fillReverseTablesParallel(A, B, m, n, TR1, TR2, TR3, g, h, p);
+    partition = findPartitionParallel(T1, T2, T3, TR1, TR2, TR3, m, n, p, h);
 }
 
 int main() {
-    char A[] = "AGTACGCA";
-    char B[] = "TATGC";
-    size_t m = 8;
-    size_t n = 5;
+    char A[] = "ACGATGACG";
+    char B[] = "TGCACGTGACGT";
+
+    size_t m = strlen(A);
+    size_t n = strlen(B);
     size_t p = 4;
-    double g = 1.0;
-    double h = 2.0;
-    
-    vector<align> partition;
-    find_partial_balanced_partition_parallel(A, B, m, n, p, g, h, partition);
-    
-    for (const auto &align : partition) {
-        cout << "(" << align.i << ", " << align.j << ", " << align.t << ")\n";
+    double g = -1.0;
+    double h = -1.0;
+
+    std::vector<align> partition;
+    findPartialBalancedPartitionParallel(A, B, m, n, p, g, h, partition);
+
+    std::cout << "Partition Points:" << std::endl;
+    for (const auto& pt : partition) {
+        std::cout << "Row: " << pt.i << ", Column: " << pt.j << ", Type: " << pt.t << std::endl;
     }
-    
+
     return 0;
 }
-
