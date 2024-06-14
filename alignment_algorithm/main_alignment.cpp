@@ -3,7 +3,7 @@
 #include <vector>
 #include <math.h>
 #include <deque>
-#include "subproblem_alignment.h"
+//#include "subproblem_alignment.h"
 #include "../sequence_alignment/partial.h"
 
 
@@ -234,7 +234,8 @@ void optimal_alignment(char *A, char *B, std::vector<align> partial_bp, size_t m
 
     size_t i = 0;
     // solve subproblems 0, 3, ...
-    while (i < num_subproblems - 3) {
+    bool num_sub_3 = num_subproblems > 3;
+    while (num_sub_3 && i < num_subproblems - 3) {
         size_t lenA = partial_bp[i+1].i - partial_bp[i].i;
         size_t lenB = partial_bp[i+1].j - partial_bp[i].j;
         size_t ida = partial_bp[i].i;
@@ -271,14 +272,16 @@ void optimal_alignment(char *A, char *B, std::vector<align> partial_bp, size_t m
         OptimalAlignmentMapThread(A, B, lenA, lenB, ida, idb, p_prime, start_type, end_type, g, h, pointers[2*i], pointers[2*i+1]);
     
     }
-    for(size_t i=0; i<num_subproblems - 3; i += 3) {
-        workers[i].join();
+    for(size_t i=0; num_sub_3 && i<num_subproblems - 3; i += 3) {
+        if(workers[i].joinable()){
+            workers[i].join();
+        }
     }
     
 
     // solve subproblems 1, 4, ...
     i = 1;
-    while (i < num_subproblems - 3) {
+    while (num_sub_3 && i < num_subproblems - 3) {
         size_t lenA = partial_bp[i+1].i - partial_bp[i].i;
         size_t lenB = partial_bp[i+1].j - partial_bp[i].j;
         size_t ida = partial_bp[i].i;
@@ -290,7 +293,7 @@ void optimal_alignment(char *A, char *B, std::vector<align> partial_bp, size_t m
         
         i += 3;
     }
-    if (i < num_subproblems) {
+    if (num_sub_3 && i < num_subproblems) {
         lenA= partial_bp[i+1].i - partial_bp[i].i;
         lenB = partial_bp[i+1].j - partial_bp[i].j;
         ida = partial_bp[i].i;
@@ -301,13 +304,15 @@ void optimal_alignment(char *A, char *B, std::vector<align> partial_bp, size_t m
         OptimalAlignmentMapThread(A, B, lenA, lenB, ida, idb, p_prime, start_type, end_type, g, h, pointers[2*i], pointers[2*i+1]);
     
     }
-    for(size_t i=1; i<num_subproblems - 3; i += 3) {
-        workers[i].join();
+    for(size_t i=1; num_sub_3 && i<num_subproblems - 3; i += 3) {
+        if(workers[i].joinable()){
+            workers[i].join();
+        }
     }
 
     // solve subproblems 2, 5, ...
     i = 2;
-    while (i < num_subproblems - 3) {
+    while (num_sub_3 && i < num_subproblems - 3) {
         size_t lenA = partial_bp[i+1].i - partial_bp[i].i;
         size_t lenB = partial_bp[i+1].j - partial_bp[i].j;
         size_t ida = partial_bp[i].i;
@@ -318,7 +323,7 @@ void optimal_alignment(char *A, char *B, std::vector<align> partial_bp, size_t m
         workers[i] = std::thread(&OptimalAlignmentMapThread, A, B, lenA, lenB, ida, idb, p_prime, start_type, end_type, g, h, std::ref(pointers[2*i]), std::ref(pointers[2*i+1]));
         i += 3;
     }
-    if (i < num_subproblems) {
+    if (num_sub_3 && i < num_subproblems) {
         lenA= partial_bp[i+1].i - partial_bp[i].i;
         lenB = partial_bp[i+1].j - partial_bp[i].j;
         ida = partial_bp[i].i;
@@ -329,8 +334,10 @@ void optimal_alignment(char *A, char *B, std::vector<align> partial_bp, size_t m
         OptimalAlignmentMapThread(A, B, lenA, lenB, ida, idb, p_prime, start_type, end_type, g, h, pointers[2*i], pointers[2*i+1]);
     
     }
-    for(size_t i=2; i<num_subproblems - 3; i += 3) {
-        workers[i].join();
+    for(size_t i=2; num_sub_3 && i<num_subproblems - 3; i += 3) {
+        if(workers[i].joinable()){
+            workers[i].join();
+        }
     }
 
     // concatenate the results
@@ -350,17 +357,20 @@ int main_alignment_function(char* A, char* B, size_t m, size_t n, size_t p, doub
     B = "-AGTGC";
     m = 4;
     n = 5;
-    p = 32;
+    p = 3;
     g = 1;
     h = 2;
     
-    std::vector<align> partitions;
-    findPartialBalancedPartitionParallel(A, B, m, n, p, g, h, partitions);
+    std::vector<align> pbp(0);
+    //findPartialBalancedPartitionParallel(A, B, m, n, p, g, h, -1, -1, partitions);
     printf("Found partitions\n");
-    std::cout << partitions.size() << "\n";
+    /*std::cout << partitions.size() << "\n";
+    for (auto& part: partitions){
+        printf("%ld %ld %d\n", part.i, part.j, part.t);
+    }*/
     // to comment when pbp is done
-    /*
-    align s1, s2, s3, s4, s5;
+    
+    /*align s1, s2, s3, s4, s5;
     s1.i = 0; s1.j = 0; s1.t = -1;
     s2.i = 8; s2.j = 7; s2.t = -1;
     s3.i = 16; s3.j = 33; s3.t = -1;
@@ -370,24 +380,23 @@ int main_alignment_function(char* A, char* B, size_t m, size_t n, size_t p, doub
     pbp.push_back(s2);
     pbp.push_back(s3);
     pbp.push_back(s4);
-    pbp.push_back(s5);
-    */
+    pbp.push_back(s5);*/
+    
     // uncomment when pbp is done
     // optimal_partition(A, B, m, n, pbp, p);
     
-    /*
+    
     align s1, s2, s3, s4;
     s1.i = 0; s1.j = 0; s1.t = -1;
-    s2.i = 0; s2.j = 2; s2.t = 2;
-    s3.i = 3; s3.j = 4; s3.t = 1;
-    s4.i = m; s4.j = n; s4.t = 1;
+    s2.i = 4; s2.j = 5; s2.t = 1;
+    //s3.i = 3; s3.j = 4; s3.t = 1;
+    //s4.i = m; s4.j = n; s4.t = 1;
     pbp.push_back(s1);
     pbp.push_back(s2);
-    pbp.push_back(s3);
-    pbp.push_back(s4);
-    */
+    //pbp.push_back(s3);
+    //pbp.push_back(s4);
 
-    optimal_alignment(A, B, partitions, m, n, p, g, h);
+    optimal_alignment(A, B, pbp, m, n, p, g, h);
 
     return 0;
 }
